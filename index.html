@@ -52,7 +52,7 @@
   @keyframes blink{from{opacity:1}to{opacity:.25}}
 
   /* QR */
-  #qr{position:absolute;top:3vh;right:2.4vw;background:#fff;border-radius:2vh;padding:1.8vh 1.8vh 1.4vh;display:none;
+  #qr{position:absolute;top:3vh;right:2.4vw;background:#fff;border-radius:2vh;padding:1.6vh;display:none;
     flex-direction:column;align-items:center;gap:1vh;box-shadow:0 .6vh 3vh rgba(30,42,50,.10);z-index:4}
   #qr .code{width:17vh;height:17vh}
   #qr .code img,#qr .code canvas{width:100%!important;height:100%!important}
@@ -75,6 +75,7 @@
             mask-image:linear-gradient(90deg,transparent 0,#000 3%,#000 95%,transparent 100%)}
   #ticker{display:inline-block;font-size:4.6vh;font-weight:500;letter-spacing:-.005em;will-change:transform}
   #ticker .pt{font-style:italic;font-weight:400;color:var(--muted)}
+  #ticker .en{font-weight:400;color:var(--slate)}
   #ticker .sep{display:inline-block;width:1.2vh;height:1.2vh;border-radius:50%;background:var(--sea);margin:0 2.4vw;vertical-align:middle}
   @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 
@@ -86,7 +87,9 @@
   #wDesc{font-size:1.7vh;color:var(--muted);line-height:1.3;margin-top:.6vh}
   #wDesc i{color:var(--soft)}
   #pIcon svg{width:4.6vh;height:4.6vh;stroke:var(--ink);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;display:block}
-  .pl{font-size:1.6vh;letter-spacing:.18em;text-transform:uppercase;color:var(--soft)}
+  .pl{font-size:1.6vh;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);max-width:15vw;overflow:hidden;text-overflow:ellipsis}
+  #plane > div{transition:opacity .5s ease}
+  #plane.fade > div{opacity:0}
   #pTime{font-size:3.6vh;font-weight:400;line-height:1.1;font-variant-numeric:tabular-nums}
   #pNote{font-size:1.6vh;color:var(--muted)}
 
@@ -122,7 +125,7 @@
 <body>
 <div id="picker">
   <div class="k">San Alfonso del Mar · Algarrobo</div>
-  <h1>Pantallas San Alfonso del Mar</h1>
+  <h1>Pantallas</h1>
   <p class="sub">Elige una torre para ver su pantalla. Dentro, mueve el mouse o usa las flechas ← → para pasar a la siguiente.</p>
   <div id="grid"></div>
   <div class="foot" id="pickFoot"></div>
@@ -143,7 +146,7 @@
     <div class="rule"></div>
   </div>
   <div id="urg"><span class="dot"></span><span id="urgTxt">Aviso urgente · Aviso urgente</span></div>
-  <div id="qr"><div class="code" id="qrCode"></div><div class="t" id="qrTxt"></div></div>
+  <div id="qr"><div class="code" id="qrCode"></div></div>
 </div>
 
 <div id="band">
@@ -154,7 +157,7 @@
       <div id="date"></div>
     </div>
     <div id="center">
-      <div class="lbl">Avisos · Avisos</div>
+      <div class="lbl">Avisos · Avisos · Notices</div>
       <div id="tickerBox"><div id="ticker"></div></div>
     </div>
     <div id="right">
@@ -163,9 +166,9 @@
         <div><div id="wTemp">--°</div><div id="wDesc"></div></div>
       </div>
       <div class="blk" id="plane">
-        <div id="pIcon"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19"/><path d="M4 14.5l14.6-4.2a2 2 0 0 1 1.1 3.8L6.8 17.6 3.6 12l2.1-.6 2 2 3.4-1L7.6 6l2.3-.7 5.3 5.2"/></svg></div>
+        <div id="pIcon"></div>
         <div>
-          <div class="pl">Aeropuerto SCL</div>
+          <div class="pl" id="pName">Aeropuerto SCL</div>
           <div id="pTime">—</div>
           <div id="pNote"></div>
         </div>
@@ -173,7 +176,7 @@
     </div>
   </div>
   <div id="sos">
-    <span class="h">Emergencias · Emergências</span>
+    <span class="h">Emergencias · Emergências · Emergency</span>
     <span>SAMU <b>131</b></span><span>Bomberos <b>132</b></span><span>Carabineros <b>133</b></span>
     <span>PDI <b>134</b></span><span>Emergencias marítimas <b>137</b></span>
     <span id="sosMuni"></span>
@@ -361,7 +364,6 @@ function showQr(it){
     new QRCode($('qrCode'), { text:url, width:256, height:256, colorDark:'#1E2A32', colorLight:'#FFFFFF', correctLevel: QRCode.CorrectLevel.M });
     qrShown = url;
   }
-  $('qrTxt').innerHTML = label;
   $('qr').style.display = 'flex';
 }
 
@@ -374,7 +376,9 @@ function renderTicker(items){
   if (s === tickerSig) return;
   tickerSig = s;
   var one = items.map(function(x){
-    return '<span>' + esc(x.es) + '</span>' + (x.pt ? '<span class="sep"></span><span class="pt">' + esc(x.pt) + '</span>' : '');
+    return '<span>' + esc(x.es) + '</span>' +
+      (x.pt ? '<span class="sep"></span><span class="pt">' + esc(x.pt) + '</span>' : '') +
+      (x.en ? '<span class="sep"></span><span class="en">' + esc(x.en) + '</span>' : '');
   }).join('<span class="sep"></span>') + '<span class="sep"></span>';
   var t = $('ticker');
   t.style.animation = 'none';
@@ -385,13 +389,32 @@ function renderTicker(items){
   });
 }
 
-/* ---------- tráfico al aeropuerto ---------- */
+/* ---------- tiempos de viaje (rotan cada 10 s) ---------- */
+var ICON_PLANE = '<svg viewBox="0 0 24 24"><path d="M2.5 19.5h19"/><path d="M4 14.5l14.6-4.2a2 2 0 0 1 1.1 3.8L6.8 17.6 3.6 12l2.1-.6 2 2 3.4-1L7.6 6l2.3-.7 5.3 5.2"/></svg>';
+var ICON_CAR = '<svg viewBox="0 0 24 24"><path d="M4 16.5V12l1.9-4.6A2 2 0 0 1 7.8 6h8.4a2 2 0 0 1 1.9 1.4L20 12v4.5"/><path d="M3 16.5h18"/><path d="M4 12h16"/><circle cx="7.5" cy="16.8" r="1.7"/><circle cx="16.5" cy="16.8" r="1.7"/></svg>';
+var trips = [], tripIdx = 0, tripTimer = null, tripSig = '';
+function fmtMin(n){ var h = Math.floor(n / 60), m = n % 60; return (h ? h + ' h ' : '') + m + ' min'; }
 function renderTraffic(tr){
-  if (!tr || !tr.min) { $('plane').style.display = 'none'; return; }
+  var arr = !tr ? [] : (tr.length !== undefined ? tr : [{ nombre:'Aeropuerto SCL', icono:'avion', min:tr.min, km:tr.km, conTrafico:tr.conTrafico }]);
+  arr = arr.filter(function(t){ return t && t.min; });
+  var sg = JSON.stringify(arr);
+  if (sg === tripSig) return;
+  tripSig = sg; trips = arr; tripIdx = 0;
+  clearInterval(tripTimer);
+  if (!trips.length) { $('plane').style.display = 'none'; return; }
   $('plane').style.display = 'flex';
-  var h = Math.floor(tr.min / 60), m = tr.min % 60;
-  $('pTime').textContent = (h ? h + ' h ' : '') + m + ' min';
-  $('pNote').textContent = (tr.conTrafico ? 'Con tráfico' : 'Estimado') + ' · ' + tr.km + ' km';
+  showTrip();
+  if (trips.length > 1) tripTimer = setInterval(function(){
+    $('plane').classList.add('fade');
+    setTimeout(function(){ tripIdx = (tripIdx + 1) % trips.length; showTrip(); $('plane').classList.remove('fade'); }, 500);
+  }, 10000);
+}
+function showTrip(){
+  var t = trips[tripIdx];
+  $('pIcon').innerHTML = t.icono === 'avion' ? ICON_PLANE : ICON_CAR;
+  $('pName').textContent = t.nombre;
+  $('pTime').textContent = fmtMin(t.min);
+  $('pNote').textContent = (t.conTrafico ? 'Con tráfico' : 'Estimado') + ' · ' + t.km + ' km';
 }
 
 /* ---------- clima (Open-Meteo, sin clave) ---------- */

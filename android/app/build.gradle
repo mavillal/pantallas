@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Valores que entrega GitHub Actions (secretos y variables del repo).
+def runNumber = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+def playerUrl = System.getenv('PLAYER_URL') ?: 'https://USUARIO.github.io/pantallas/'
+def keystorePath = System.getenv('KEYSTORE_PATH')
+def keystorePass = System.getenv('KEYSTORE_PASS')
+
+android {
+    namespace 'cl.sadm.pantallas'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'cl.sadm.pantallas'
+        minSdk 24
+        targetSdk 34
+        versionCode runNumber
+        versionName "1.0.${runNumber}"
+        buildConfigField 'String', 'PLAYER_URL', "\"${playerUrl}\""
+        buildConfigField 'int', 'NUM_TORRES', '11'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storePassword keystorePass
+                keyAlias 'pantallas'
+                keyPassword keystorePass
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig keystorePath ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

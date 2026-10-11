@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pantallas Condominio</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;cursor:none;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  #stage{position:fixed;inset:0}
+  .slide{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+    opacity:0;transition:opacity .8s ease}
+  .slide.on{opacity:1}
+  #bar{position:fixed;left:0;right:0;bottom:0;height:5vh;display:flex;align-items:center;
+    justify-content:space-between;padding:0 2vw;background:rgba(0,0,0,.55);color:#fff;
+    font-size:2.4vh;letter-spacing:.02em}
+  #urg{position:fixed;top:0;left:0;right:0;padding:1.2vh;background:#c4161c;color:#fff;
+    text-align:center;font-weight:700;font-size:3.2vh;display:none;
+    animation:pulse 1.2s ease-in-out infinite alternate}
+  @keyframes pulse{from{opacity:1}to{opacity:.65}}
+  #empty{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    flex-direction:column;color:#fff;text-align:center}
+  #empty h1{font-size:6vh;margin:0 0 1vh;font-weight:600}
+  #empty p{font-size:3vh;margin:0;opacity:.7}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="empty"><h1>Bienvenidos · Bem-vindos</h1><p>San Alfonso del Mar · Algarrobo</p></div>
+<div id="urg">⚠ AVISO URGENTE · AVISO URGENTE ⚠</div>
+<div id="bar"><span id="date"></span><span id="clock"></span></div>
+
+<script>
+/* ===== CONFIGURACIÓN ===== */
+const API = 'PEGAR_AQUI_URL_DEL_WEB_APP';   // termina en /exec
+const REFRESH_MS = 60 * 1000;                // consulta contenido cada 1 min
+const LOAD_TIMEOUT_MS = 20000;               // si un archivo no carga en 20 s, salta
+const MAX_VIDEO_MS = 3 * 60 * 1000;          // tope de seguridad por video
+const TZ = 'America/Santiago';
+/* ========================= */
+
+const TORRE = (new URLSearchParams(location.search).get('torre') || '').toUpperCase();
+const $ = id => document.getElementById(id);
+let list = [], idx = -1, timer = null, current = null, sig = '', wasUrgent = false;
+
+function cacheGet(){ try { return JSON.parse(localStorage.getItem('playlist') || 'null'); } catch(e){ return null; } }
+function cacheSet(d){ try { localStorage.setItem('playlist', JSON.stringify(d)); } catch(e){} }
+
+async function refresh(){
+  try {
+    const r = await fetch(`${API}?torre=${encodeURIComponent(TORRE)}&ping=1&t=${Date.now()}`);
+    const d = await r.json();
+    cacheSet(d);
+    // recarga remota: si cambió Control!B1 en la Sheet, recarga la página completa
+    if (d.recarga !== undefined && d.recarga !== '') {
+      if (window.__recarga === undefined) window.__recarga = d.recarga;
+      else if (d.recarga !== window.__recarga) { location.reload(); return; }
+    }
+    apply(d);
+  } catch(e) {
+    const d = cacheGet();              // sin internet: sigue con lo último conocido
+    if (d && !list.length) apply(d);
+  }
+}
+
+function apply(d){
+  const urg = $('urg');
+  urg.textContent = d.panico ? '⚠ EMERGENCIA · EMERGÊNCIA ⚠' : '⚠ AVISO URGENTE · AVISO URGENTE ⚠';
+  urg.style.display = d.urgente ? 'block' : 'none';
+  const s = JSON.stringify([!!d.panico, (d.items || []).map(x => [x.url, x.dur])]);
+  if (s === sig) return;
+  sig = s; list = d.items || []; idx = -1;
+  // corta de inmediato al entrar o salir de urgencia/pánico
+  if (d.urgente || wasUrgent || !current) next();
+  wasUrgent = !!d.urgente;
+}
+
+function next(){
+  clearTimeout(timer);
+  if (!list.length){ showEmpty(true); timer = setTimeout(next, 30000); return; }
+  showEmpty(false);
+  idx = (idx + 1) % list.length;
+  const it = list[idx];
+  const isVideo = it.tipo === 'video';
+  const el = document.createElement(isVideo ? 'video' : 'img');
+  el.className = 'slide';
+  let shown = false;
+
+  const fail = () => { if (!shown){ el.remove(); timer = setTimeout(next, 500); } };
+  const show = () => {
+    if (shown) return; shown = true;
+    clearTimeout(timer);
+    requestAnimationFrame(() => el.classList.add('on'));
+    if (current && current !== el){ const old = current; old.classList.remove('on'); setTimeout(() => old.remove(), 900); }
+    current = el;
+    timer = setTimeout(next, isVideo ? MAX_VIDEO_MS : (it.dur || 10) * 1000);
+  };
+
+  if (isVideo){
+    el.muted = true; el.playsInline = true; el.autoplay = true; el.preload = 'auto';
+    el.addEventListener('loadeddata', show, { once:true });
+    el.addEventListener('ended', next);
+  } else {
+    el.addEventListener('load', show, { once:true });
+  }
+  el.addEventListener('error', fail, { once:true });
+  $('stage').appendChild(el);
+  el.src = it.url;
+  timer = setTimeout(fail, LOAD_TIMEOUT_MS);
+}
+
+function showEmpty(on){ $('empty').style.display = on ? 'flex' : 'none'; }
+
+function tick(){
+  const now = new Date();
+  $('clock').textContent = now.toLocaleTimeString('es-CL', { timeZone: TZ, hour:'2-digit', minute:'2-digit' });
+  $('date').textContent = now.toLocaleDateString('es-CL', { timeZone: TZ, weekday:'long', day:'numeric', month:'long' });
+  // recarga diaria a las 04:00 para evitar fugas de memoria del navegador
+  const hm = now.toLocaleTimeString('en-GB', { timeZone: TZ, hour:'2-digit', minute:'2-digit' });
+  if (hm === '04:00' && performance.now() > 120000) location.reload();
+}
+
+const c = cacheGet(); if (c) apply(c);  // arranque instantáneo con caché
+refresh();
+setInterval(refresh, REFRESH_MS);
+tick(); setInterval(tick, 20000);
+</script>
+</body>
+</html>

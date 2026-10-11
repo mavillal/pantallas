@@ -3,126 +3,387 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pantallas Condominio</title>
+<title>Pantallas San Alfonso del Mar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  html,body{margin:0;height:100%;background:#000;overflow:hidden;cursor:none;
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  #stage{position:fixed;inset:0}
-  .slide{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
-    opacity:0;transition:opacity .8s ease}
+  :root{
+    --sand:#F3EFE8; --paper:#FBF9F5; --strip:#ECE7DE; --line:#E2DDD3;
+    --ink:#1E2A32; --muted:#6B7780; --soft:#9AA3AA;
+    --fjord:#3E6E8E; --sea:#2F7D78; --ochre:#C2923A; --clay:#B9684A;
+    --sage:#6F8F72; --brick:#B4473A; --slate:#5D6B78;
+    --band:19vh;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;cursor:none;background:var(--sand);color:var(--ink);
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+
+  /* ---------- escenario ---------- */
+  #stage{position:absolute;top:0;left:0;right:0;bottom:var(--band);background:var(--sand);overflow:hidden}
+  .slide{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .9s ease}
   .slide.on{opacity:1}
-  #bar{position:fixed;left:0;right:0;bottom:0;height:5vh;display:flex;align-items:center;
-    justify-content:space-between;padding:0 2vw;background:rgba(0,0,0,.55);color:#fff;
-    font-size:2.4vh;letter-spacing:.02em}
-  #urg{position:fixed;top:0;left:0;right:0;padding:1.2vh;background:#c4161c;color:#fff;
-    text-align:center;font-weight:700;font-size:3.2vh;display:none;
-    animation:pulse 1.2s ease-in-out infinite alternate}
-  @keyframes pulse{from{opacity:1}to{opacity:.65}}
-  #empty{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
-    flex-direction:column;color:#fff;text-align:center}
-  #empty h1{font-size:6vh;margin:0 0 1vh;font-weight:600}
-  #empty p{font-size:3vh;margin:0;opacity:.7}
+
+  /* tarjeta de aviso de texto */
+  .card{display:flex;align-items:center;justify-content:center;padding:5vh 8vw}
+  .card .wrap{width:100%;max-width:72vw}
+  .card .head{display:flex;align-items:center;gap:2.2vw;margin-bottom:4vh}
+  .card .ico{width:11vh;height:11vh;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+  .card .ico svg{width:5.6vh;height:5.6vh;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .card .cat{font-size:2.2vh;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);font-weight:500}
+  .card .cat i{font-style:normal;color:var(--soft)}
+  .card h1{font-size:7.4vh;line-height:1.08;font-weight:600;letter-spacing:-.015em;margin:0 0 2.6vh}
+  .card .body{font-size:3.8vh;line-height:1.38;font-weight:400;margin:0;color:#2E3B44;white-space:pre-line}
+  .card hr{border:0;border-top:1px solid var(--line);margin:4.2vh 0 3vh;width:12vw}
+  .card .pt h2{font-size:3.4vh;font-weight:500;font-style:italic;margin:0 0 1vh;color:var(--muted)}
+  .card .pt p{font-size:2.8vh;line-height:1.4;font-style:italic;margin:0;color:var(--muted);white-space:pre-line}
+  .card .until{margin-top:4vh;font-size:2.1vh;color:var(--soft);letter-spacing:.04em}
+
+  /* bienvenida */
+  #empty{position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  #empty .k{font-size:2.2vh;letter-spacing:.42em;text-transform:uppercase;color:var(--muted)}
+  #empty h1{font-size:12vh;font-weight:300;letter-spacing:-.03em;margin:2vh 0 0}
+  #empty h2{font-size:6vh;font-weight:300;font-style:italic;color:var(--muted);margin:.5vh 0 4vh}
+  #empty .rule{width:6vw;border-top:2px solid var(--sea)}
+
+  /* aviso urgente */
+  #urg{position:absolute;top:0;left:0;right:0;padding:1.6vh 3vw;background:var(--brick);color:#fff;font-size:3.2vh;
+    font-weight:600;letter-spacing:.06em;display:none;align-items:center;gap:1.4vw;z-index:5}
+  #urg .dot{width:1.6vh;height:1.6vh;border-radius:50%;background:#fff;animation:blink 1s ease-in-out infinite alternate}
+  @keyframes blink{from{opacity:1}to{opacity:.25}}
+
+  /* QR */
+  #qr{position:absolute;top:3vh;right:2.4vw;background:#fff;border-radius:2vh;padding:1.8vh 1.8vh 1.4vh;display:none;
+    flex-direction:column;align-items:center;gap:1vh;box-shadow:0 .6vh 3vh rgba(30,42,50,.10);z-index:4}
+  #qr .code{width:17vh;height:17vh}
+  #qr .code img,#qr .code canvas{width:100%!important;height:100%!important}
+  #qr .t{font-size:1.9vh;font-weight:600;text-align:center;line-height:1.25}
+  #qr .t i{display:block;font-weight:400;color:var(--muted)}
+
+  /* ---------- franja inferior ---------- */
+  #band{position:absolute;left:0;right:0;bottom:0;height:var(--band);background:var(--paper);border-top:1px solid var(--line);
+    display:flex;flex-direction:column}
+  #band .row{flex:1;display:flex;align-items:stretch;min-height:0}
+  #left{width:21vw;padding:.6vh 2.4vw;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--line)}
+  #tower{font-size:2.1vh;line-height:1.5;font-weight:600;letter-spacing:.16em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;color:var(--sea)}
+  #clock{font-size:5vh;font-weight:300;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+  #date{font-size:1.9vh;color:var(--muted);white-space:nowrap}
+
+  #center{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:0 0 0 2vw;overflow:hidden}
+  #center .lbl{font-size:1.6vh;letter-spacing:.32em;text-transform:uppercase;color:var(--soft);margin-bottom:.6vh}
+  #tickerBox{overflow:hidden;white-space:nowrap;
+    -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 3%,#000 95%,transparent 100%);
+            mask-image:linear-gradient(90deg,transparent 0,#000 3%,#000 95%,transparent 100%)}
+  #ticker{display:inline-block;font-size:4.6vh;font-weight:500;letter-spacing:-.005em;will-change:transform}
+  #ticker .pt{font-style:italic;font-weight:400;color:var(--muted)}
+  #ticker .sep{display:inline-block;width:1.2vh;height:1.2vh;border-radius:50%;background:var(--sea);margin:0 2.4vw;vertical-align:middle}
+  @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  #right{width:36vw;display:flex;align-items:center;border-left:1px solid var(--line)}
+  .blk{flex:1;display:flex;align-items:center;gap:1vw;padding:0 1.4vw;height:100%;min-width:0;white-space:nowrap}
+  .blk + .blk{border-left:1px solid var(--line)}
+  #wIcon svg{width:7.6vh;height:7.6vh;display:block}
+  #wTemp{font-size:5vh;font-weight:300;line-height:1}
+  #wDesc{font-size:1.7vh;color:var(--muted);line-height:1.3;margin-top:.6vh}
+  #wDesc i{color:var(--soft)}
+  #pIcon svg{width:4.6vh;height:4.6vh;stroke:var(--ink);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;display:block}
+  .pl{font-size:1.6vh;letter-spacing:.18em;text-transform:uppercase;color:var(--soft)}
+  #pTime{font-size:3.6vh;font-weight:400;line-height:1.1;font-variant-numeric:tabular-nums}
+  #pNote{font-size:1.6vh;color:var(--muted)}
+
+  #sos{height:4.6vh;background:var(--strip);display:flex;align-items:center;gap:1.3vw;padding:0 2.4vw;font-size:2.15vh;white-space:nowrap;overflow:hidden}
+  #sos .h{font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:1.8vh;color:var(--brick);display:flex;align-items:center;gap:.8vw}
+  #sos .h:before{content:"";width:1.1vh;height:1.1vh;border-radius:50%;background:var(--brick)}
+  #sos b{font-weight:600;font-variant-numeric:tabular-nums}
+  #sos span{color:#3A4750}
 </style>
 </head>
 <body>
-<div id="stage"></div>
-<div id="empty"><h1>Bienvenidos · Bem-vindos</h1><p>San Alfonso del Mar · Algarrobo</p></div>
-<div id="urg">⚠ AVISO URGENTE · AVISO URGENTE ⚠</div>
-<div id="bar"><span id="date"></span><span id="clock"></span></div>
+<div id="stage">
+  <div id="empty">
+    <div class="k">San Alfonso del Mar · Algarrobo</div>
+    <h1>Bienvenidos</h1>
+    <h2>Bem-vindos</h2>
+    <div class="rule"></div>
+  </div>
+  <div id="urg"><span class="dot"></span><span id="urgTxt">Aviso urgente · Aviso urgente</span></div>
+  <div id="qr"><div class="code" id="qrCode"></div><div class="t" id="qrTxt"></div></div>
+</div>
 
+<div id="band">
+  <div class="row">
+    <div id="left">
+      <div id="tower"></div>
+      <div id="clock">--:--</div>
+      <div id="date"></div>
+    </div>
+    <div id="center">
+      <div class="lbl">Avisos · Avisos</div>
+      <div id="tickerBox"><div id="ticker"></div></div>
+    </div>
+    <div id="right">
+      <div class="blk">
+        <div id="wIcon"></div>
+        <div><div id="wTemp">--°</div><div id="wDesc"></div></div>
+      </div>
+      <div class="blk" id="plane">
+        <div id="pIcon"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19"/><path d="M4 14.5l14.6-4.2a2 2 0 0 1 1.1 3.8L6.8 17.6 3.6 12l2.1-.6 2 2 3.4-1L7.6 6l2.3-.7 5.3 5.2"/></svg></div>
+        <div>
+          <div class="pl">Aeropuerto SCL</div>
+          <div id="pTime">—</div>
+          <div id="pNote"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="sos">
+    <span class="h">Emergencias · Emergências</span>
+    <span>SAMU <b>131</b></span><span>Bomberos <b>132</b></span><span>Carabineros <b>133</b></span>
+    <span>PDI <b>134</b></span><span>Emergencias marítimas <b>137</b></span>
+    <span id="sosMuni"></span>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 /* ===== CONFIGURACIÓN ===== */
-const API = 'https://script.google.com/macros/s/AKfycbxbfs7FeWrfvbxRQmJWauKhcbANUigP04LFPmMieKR0YGwbbBafl8eKzADaVndSID67/exec';   // termina en /exec
-const REFRESH_MS = 60 * 1000;                // consulta contenido cada 1 min
-const LOAD_TIMEOUT_MS = 20000;               // si un archivo no carga en 20 s, salta
-const MAX_VIDEO_MS = 3 * 60 * 1000;          // tope de seguridad por video
-const TZ = 'America/Santiago';
+var API = 'PEGAR_AQUI_URL_DEL_WEB_APP';   // termina en /exec
+var REFRESH_MS = 60 * 1000;                // contenido: cada 1 min
+var WEATHER_MS = 15 * 60 * 1000;           // clima: cada 15 min
+var LOAD_TIMEOUT_MS = 20000;
+var MAX_VIDEO_MS = 3 * 60 * 1000;
+var TZ = 'America/Santiago';
+var LAT = -33.355, LON = -71.655;          // San Alfonso del Mar, Algarrobo
+var TICKER_SPEED = 110;                    // px por segundo
 /* ========================= */
 
-const TORRE = (new URLSearchParams(location.search).get('torre') || '').toUpperCase();
-const $ = id => document.getElementById(id);
-let list = [], idx = -1, timer = null, current = null, sig = '', wasUrgent = false;
+var TORRE = (new URLSearchParams(location.search).get('torre') || '').toUpperCase();
+function $(id){ return document.getElementById(id); }
+var list = [], idx = -1, timer = null, current = null, sig = '', wasUrgent = false;
+var lastData = null, tickerSig = '', qrShown = '';
 
-function cacheGet(){ try { return JSON.parse(localStorage.getItem('playlist') || 'null'); } catch(e){ return null; } }
-function cacheSet(d){ try { localStorage.setItem('playlist', JSON.stringify(d)); } catch(e){} }
+function store(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+function load(k){ try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){ return null; } }
+function esc(s){ return String(s || '').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
-async function refresh(){
-  try {
-    const r = await fetch(`${API}?torre=${encodeURIComponent(TORRE)}&ping=1&t=${Date.now()}`);
-    const d = await r.json();
-    cacheSet(d);
-    // recarga remota: si cambió Control!B1 en la Sheet, recarga la página completa
-    if (d.recarga !== undefined && d.recarga !== '') {
-      if (window.__recarga === undefined) window.__recarga = d.recarga;
-      else if (d.recarga !== window.__recarga) { location.reload(); return; }
-    }
-    apply(d);
-  } catch(e) {
-    const d = cacheGet();              // sin internet: sigue con lo último conocido
-    if (d && !list.length) apply(d);
-  }
+/* ---------- íconos ---------- */
+var CAT = [
+  { re:/corte/i,   color:'var(--fjord)', es:'Corte de servicio', pt:'Interrupção de serviço',
+    svg:'<path d="M12 3.5c-3.2 4.2-5.8 7.4-5.8 10.6a5.8 5.8 0 0 0 11.6 0c0-3.2-2.6-6.4-5.8-10.6z"/>' },
+  { re:/emerg/i,   color:'var(--brick)', es:'Emergencia', pt:'Emergência',
+    svg:'<path d="M12 3.8l9 15.7H3z"/><path d="M12 10v4.2"/><path d="M12 17.1v.1"/>' },
+  { re:/turis/i,   color:'var(--sea)',   es:'Turismo', pt:'Turismo',
+    svg:'<path d="M12 21s-6.4-5.9-6.4-11a6.4 6.4 0 0 1 12.8 0c0 5.1-6.4 11-6.4 11z"/><circle cx="12" cy="10" r="2.3"/>' },
+  { re:/comerc/i,  color:'var(--clay)',  es:'Comercio local', pt:'Comércio local',
+    svg:'<path d="M5 8.5h14l-1.1 11.5H6.1z"/><path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"/>' },
+  { re:/evento/i,  color:'var(--sage)',  es:'Evento', pt:'Evento',
+    svg:'<rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/>' },
+  { re:/.*/,       color:'var(--slate)', es:'Aviso', pt:'Aviso',
+    svg:'<circle cx="12" cy="12" r="8.6"/><path d="M12 11v5.2"/><path d="M12 7.9v.1"/>' }
+];
+function catOf(c){ for (var i = 0; i < CAT.length; i++) if (CAT[i].re.test(c || '')) return CAT[i]; return CAT[CAT.length-1]; }
+
+var W_SUN  = '<g stroke="#C2923A" stroke-width="2.6" stroke-linecap="round" fill="none"><circle cx="32" cy="32" r="10"/><path d="M32 10v5M32 49v5M10 32h5M49 32h5M16.4 16.4l3.6 3.6M44 44l3.6 3.6M16.4 47.6l3.6-3.6M44 20l3.6-3.6"/></g>';
+var W_MOON = '<path d="M41 13a20 20 0 1 0 11 26A16 16 0 0 1 41 13z" fill="none" stroke="#5D6B78" stroke-width="2.6" stroke-linejoin="round"/>';
+function cloud(dy){ return '<path transform="translate(0 '+dy+')" d="M19 46h27a10 10 0 0 0 1-20 14 14 0 0 0-27 3.5A8.3 8.3 0 0 0 19 46z" fill="#FBF9F5" stroke="#1E2A32" stroke-width="2.6" stroke-linejoin="round"/>'; }
+var W_PART = '<g transform="translate(-8 -8) scale(.8)">' + W_SUN + '</g>' + cloud(4);
+var W_FOG  = '<g stroke="#5D6B78" stroke-width="2.6" stroke-linecap="round"><path d="M12 26h40M8 34h44M14 42h36M18 50h28"/></g>';
+var W_RAIN = cloud(-6) + '<g stroke="#3E6E8E" stroke-width="2.6" stroke-linecap="round"><path d="M24 46l-3 8M33 46l-3 8M42 46l-3 8"/></g>';
+var W_DRIZ = cloud(-6) + '<g fill="#3E6E8E"><circle cx="24" cy="50" r="2"/><circle cx="33" cy="54" r="2"/><circle cx="42" cy="50" r="2"/></g>';
+var W_SNOW = cloud(-6) + '<g fill="#5D6B78"><circle cx="24" cy="50" r="2.4"/><circle cx="33" cy="54" r="2.4"/><circle cx="42" cy="50" r="2.4"/></g>';
+var W_STRM = cloud(-6) + '<path d="M34 42l-6 9h6l-4 9 10-12h-6l4-6z" fill="#C2923A"/>';
+function weatherOf(code, day){
+  if (code === 0) return { svg: day ? W_SUN : W_MOON, es:'Despejado', pt:'Céu limpo' };
+  if (code <= 2)  return { svg: day ? W_PART : cloud(0), es:'Parcial nublado', pt:'Parcialmente nublado' };
+  if (code === 3) return { svg: cloud(0), es:'Nublado', pt:'Nublado' };
+  if (code === 45 || code === 48) return { svg: W_FOG, es:'Neblina', pt:'Neblina' };
+  if (code >= 51 && code <= 57) return { svg: W_DRIZ, es:'Llovizna', pt:'Garoa' };
+  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return { svg: W_RAIN, es:'Lluvia', pt:'Chuva' };
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { svg: W_SNOW, es:'Nieve', pt:'Neve' };
+  if (code >= 95) return { svg: W_STRM, es:'Tormenta', pt:'Tempestade' };
+  return { svg: cloud(0), es:'', pt:'' };
+}
+
+/* ---------- contenido ---------- */
+function refresh(){
+  fetch(API + '?torre=' + encodeURIComponent(TORRE) + '&ping=1&t=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      store('playlist', d);
+      if (d.recarga !== undefined && d.recarga !== '') {
+        if (window.__recarga === undefined) window.__recarga = d.recarga;
+        else if (d.recarga !== window.__recarga) { location.reload(); return; }
+      }
+      apply(d);
+    })
+    .catch(function(e){
+      var d = load('playlist');
+      if (d && !list.length) apply(d);
+      else if (!list.length) showEmpty(true);
+      console.warn('No se pudo leer el contenido. Revisa la constante API.', e);
+    });
 }
 
 function apply(d){
-  const urg = $('urg');
-  urg.textContent = d.panico ? '⚠ EMERGENCIA · EMERGÊNCIA ⚠' : '⚠ AVISO URGENTE · AVISO URGENTE ⚠';
-  urg.style.display = d.urgente ? 'block' : 'none';
-  const s = JSON.stringify([!!d.panico, (d.items || []).map(x => [x.url, x.dur])]);
+  lastData = d;
+  $('urgTxt').textContent = d.panico ? 'Emergencia · Emergência' : 'Aviso urgente · Aviso urgente';
+  $('urg').style.display = d.urgente ? 'flex' : 'none';
+  $('tower').textContent = d.torreNombre || (TORRE ? TORRE.replace(/^T/, 'Torre ') : '');
+  $('sosMuni').innerHTML = d.seguridad ? 'Seguridad Municipal <b>' + esc(d.seguridad) + '</b>' : '';
+  renderTicker(d.cinta || []);
+  renderTraffic(d.trafico);
+
+  var items = d.items || [];
+  var s = JSON.stringify([!!d.panico, items.map(function(x){ return [x.url, x.dur, x.titulo, x.texto, x.link]; })]);
   if (s === sig) return;
-  sig = s; list = d.items || []; idx = -1;
-  // corta de inmediato al entrar o salir de urgencia/pánico
+  sig = s; list = items; idx = -1;
   if (d.urgente || wasUrgent || !current) next();
   wasUrgent = !!d.urgente;
 }
 
 function next(){
   clearTimeout(timer);
-  if (!list.length){ showEmpty(true); timer = setTimeout(next, 30000); return; }
+  if (!list.length){ showEmpty(true); showQr(null); timer = setTimeout(next, 30000); return; }
   showEmpty(false);
   idx = (idx + 1) % list.length;
-  const it = list[idx];
-  const isVideo = it.tipo === 'video';
-  const el = document.createElement(isVideo ? 'video' : 'img');
-  el.className = 'slide';
-  let shown = false;
+  var it = list[idx];
 
-  const fail = () => { if (!shown){ el.remove(); timer = setTimeout(next, 500); } };
-  const show = () => {
-    if (shown) return; shown = true;
-    clearTimeout(timer);
-    requestAnimationFrame(() => el.classList.add('on'));
-    if (current && current !== el){ const old = current; old.classList.remove('on'); setTimeout(() => old.remove(), 900); }
-    current = el;
-    timer = setTimeout(next, isVideo ? MAX_VIDEO_MS : (it.dur || 10) * 1000);
-  };
-
-  if (isVideo){
-    el.muted = true; el.playsInline = true; el.autoplay = true; el.preload = 'auto';
-    el.addEventListener('loadeddata', show, { once:true });
-    el.addEventListener('ended', next);
-  } else {
-    el.addEventListener('load', show, { once:true });
+  if (it.tipo === 'texto') {
+    var el = buildCard(it);
+    $('stage').insertBefore(el, $('urg'));
+    reveal(el, it, Math.max(it.dur || 10, 12) * 1000);
+    return;
   }
-  el.addEventListener('error', fail, { once:true });
-  $('stage').appendChild(el);
-  el.src = it.url;
+
+  var isVideo = it.tipo === 'video';
+  var m = document.createElement(isVideo ? 'video' : 'img');
+  m.className = 'slide';
+  var shown = false;
+  var fail = function(){ if (!shown){ m.remove(); timer = setTimeout(next, 500); } };
+  var show = function(){ if (shown) return; shown = true; reveal(m, it, isVideo ? MAX_VIDEO_MS : (it.dur || 10) * 1000); };
+  if (isVideo){
+    m.muted = true; m.playsInline = true; m.autoplay = true; m.preload = 'auto';
+    m.addEventListener('loadeddata', show, { once:true });
+    m.addEventListener('ended', next);
+  } else {
+    m.addEventListener('load', show, { once:true });
+  }
+  m.addEventListener('error', fail, { once:true });
+  $('stage').insertBefore(m, $('urg'));
+  m.src = it.url;
   timer = setTimeout(fail, LOAD_TIMEOUT_MS);
+}
+
+function reveal(el, it, ms){
+  clearTimeout(timer);
+  requestAnimationFrame(function(){ el.classList.add('on'); });
+  if (current && current !== el){ var old = current; old.classList.remove('on'); setTimeout(function(){ old.remove(); }, 1000); }
+  current = el;
+  showQr(it);
+  timer = setTimeout(next, ms);
+}
+
+function buildCard(it){
+  var c = catOf(it.categoria);
+  var el = document.createElement('div');
+  el.className = 'slide card';
+  var until = '';
+  if (it.hasta) {
+    var d = new Date(it.hasta);
+    var f = function(loc){ return d.toLocaleString(loc, { timeZone:TZ, weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', hourCycle:'h23' }); };
+    until = 'Vigente hasta ' + f('es-CL') + ' · Válido até ' + f('pt-BR');
+  }
+  el.innerHTML =
+    '<div class="wrap">' +
+      '<div class="head"><div class="ico" style="background:' + c.color + '"><svg viewBox="0 0 24 24">' + c.svg + '</svg></div>' +
+      '<div class="cat">' + c.es + ' <i>· ' + c.pt + '</i></div></div>' +
+      '<h1>' + esc(it.titulo) + '</h1>' +
+      (it.texto ? '<p class="body">' + esc(it.texto) + '</p>' : '') +
+      ((it.tituloPt || it.textoPt) ? '<hr><div class="pt">' +
+        (it.tituloPt ? '<h2>' + esc(it.tituloPt) + '</h2>' : '') +
+        (it.textoPt ? '<p>' + esc(it.textoPt) + '</p>' : '') + '</div>' : '') +
+      (until ? '<div class="until">' + until + '</div>' : '') +
+    '</div>';
+  return el;
+}
+
+function showQr(it){
+  var url = '', label = '';
+  if (it && it.link) { url = it.link; label = 'Escanea · Escaneie'; }
+  else if (it && /turis/i.test(it.categoria || '') && lastData && lastData.qrTurismo) {
+    url = lastData.qrTurismo; label = 'Descubre Algarrobo<i>Descubra Algarrobo</i>';
+  }
+  if (!url || typeof QRCode === 'undefined') { $('qr').style.display = 'none'; qrShown = ''; return; }
+  if (url !== qrShown) {
+    $('qrCode').innerHTML = '';
+    new QRCode($('qrCode'), { text:url, width:256, height:256, colorDark:'#1E2A32', colorLight:'#FFFFFF', correctLevel: QRCode.CorrectLevel.M });
+    qrShown = url;
+  }
+  $('qrTxt').innerHTML = label;
+  $('qr').style.display = 'flex';
 }
 
 function showEmpty(on){ $('empty').style.display = on ? 'flex' : 'none'; }
 
+/* ---------- cinta ---------- */
+function renderTicker(items){
+  if (!items.length) items = [{ es:'Bienvenidos a San Alfonso del Mar', pt:'Bem-vindos ao San Alfonso del Mar' }];
+  var s = JSON.stringify(items);
+  if (s === tickerSig) return;
+  tickerSig = s;
+  var one = items.map(function(x){
+    return '<span>' + esc(x.es) + '</span>' + (x.pt ? '<span class="sep"></span><span class="pt">' + esc(x.pt) + '</span>' : '');
+  }).join('<span class="sep"></span>') + '<span class="sep"></span>';
+  var t = $('ticker');
+  t.style.animation = 'none';
+  t.innerHTML = one + one;
+  requestAnimationFrame(function(){
+    var half = t.scrollWidth / 2;
+    t.style.animation = 'scroll ' + Math.max(12, half / TICKER_SPEED) + 's linear infinite';
+  });
+}
+
+/* ---------- tráfico al aeropuerto ---------- */
+function renderTraffic(tr){
+  if (!tr || !tr.min) { $('plane').style.display = 'none'; return; }
+  $('plane').style.display = 'flex';
+  var h = Math.floor(tr.min / 60), m = tr.min % 60;
+  $('pTime').textContent = (h ? h + ' h ' : '') + m + ' min';
+  $('pNote').textContent = (tr.conTrafico ? 'Con tráfico' : 'Estimado') + ' · ' + tr.km + ' km';
+}
+
+/* ---------- clima (Open-Meteo, sin clave) ---------- */
+function renderWeather(w){
+  if (!w) return;
+  var info = weatherOf(w.weather_code, w.is_day === 1);
+  $('wIcon').innerHTML = '<svg viewBox="0 0 64 64">' + info.svg + '</svg>';
+  $('wTemp').textContent = Math.round(w.temperature_2m) + '°';
+  $('wDesc').innerHTML = esc(info.es) + '<br><i>' + esc(info.pt) + '</i>';
+}
+function weather(){
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=' + LAT + '&longitude=' + LON +
+        '&current=temperature_2m,weather_code,is_day&timezone=America%2FSantiago')
+    .then(function(r){ return r.json(); })
+    .then(function(j){ if (j && j.current) { store('weather', j.current); renderWeather(j.current); } })
+    .catch(function(){ renderWeather(load('weather')); });
+}
+
+/* ---------- reloj ---------- */
 function tick(){
-  const now = new Date();
-  $('clock').textContent = now.toLocaleTimeString('es-CL', { timeZone: TZ, hour:'2-digit', minute:'2-digit' });
-  $('date').textContent = now.toLocaleDateString('es-CL', { timeZone: TZ, weekday:'long', day:'numeric', month:'long' });
-  // recarga diaria a las 04:00 para evitar fugas de memoria del navegador
-  const hm = now.toLocaleTimeString('en-GB', { timeZone: TZ, hour:'2-digit', minute:'2-digit' });
+  var now = new Date();
+  $('clock').textContent = now.toLocaleTimeString('es-CL', { timeZone:TZ, hour:'2-digit', minute:'2-digit', hourCycle:'h23' });
+  var ds = now.toLocaleDateString('es-CL', { timeZone:TZ, weekday:'long', day:'numeric', month:'long' });
+  $('date').textContent = ds.charAt(0).toUpperCase() + ds.slice(1);
+  var hm = now.toLocaleTimeString('en-GB', { timeZone:TZ, hour:'2-digit', minute:'2-digit' });
   if (hm === '04:00' && performance.now() > 120000) location.reload();
 }
 
-const c = cacheGet(); if (c) apply(c);  // arranque instantáneo con caché
-refresh();
-setInterval(refresh, REFRESH_MS);
+/* ---------- arranque ---------- */
+$('tower').textContent = TORRE ? TORRE.replace(/^T/, 'Torre ') : '';
+showEmpty(true);
+var cached = load('playlist'); if (cached) apply(cached);
+renderWeather(load('weather'));
+refresh(); setInterval(refresh, REFRESH_MS);
+weather(); setInterval(weather, WEATHER_MS);
 tick(); setInterval(tick, 20000);
 </script>
 </body>

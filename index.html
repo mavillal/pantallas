@@ -33,10 +33,10 @@
   .card .cat i{font-style:normal;color:var(--soft)}
   .card h1{font-size:7.4vh;line-height:1.08;font-weight:600;letter-spacing:-.015em;margin:0 0 2.6vh}
   .card .body{font-size:3.8vh;line-height:1.38;font-weight:400;margin:0;color:#2E3B44;white-space:pre-line}
-  .card hr{border:0;border-top:1px solid var(--line);margin:4.2vh 0 3vh;width:12vw}
+  .card hr{border:0;border-top:1px solid var(--line);margin:3vh 0 2.2vh;width:12vw}
   .card .pt h2{font-size:3.4vh;font-weight:500;font-style:italic;margin:0 0 1vh;color:var(--muted)}
   .card .pt p{font-size:2.8vh;line-height:1.4;font-style:italic;margin:0;color:var(--muted);white-space:pre-line}
-  .card .until{margin-top:4vh;font-size:2.1vh;color:var(--soft);letter-spacing:.04em}
+  .card .until{margin-top:3vh;font-size:2.1vh;color:var(--soft);letter-spacing:.04em}
 
   /* bienvenida */
   #empty{position:absolute;top:0;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center}
@@ -85,7 +85,7 @@
   #wIcon svg{width:7.6vh;height:7.6vh;display:block}
   #wTemp{font-size:5vh;font-weight:300;line-height:1}
   #wDesc{font-size:1.7vh;color:var(--muted);line-height:1.3;margin-top:.6vh}
-  #wDesc i{color:var(--soft)}
+  #wDesc .mm{color:var(--ink);font-variant-numeric:tabular-nums}
   #pIcon svg{width:4.6vh;height:4.6vh;stroke:var(--ink);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;display:block}
   .pl{font-size:1.6vh;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);max-width:15vw;overflow:hidden;text-overflow:ellipsis}
   #plane > div{transition:opacity .5s ease}
@@ -237,15 +237,15 @@ var W_DRIZ = cloud(-6) + '<g fill="#3E6E8E"><circle cx="24" cy="50" r="2"/><circ
 var W_SNOW = cloud(-6) + '<g fill="#5D6B78"><circle cx="24" cy="50" r="2.4"/><circle cx="33" cy="54" r="2.4"/><circle cx="42" cy="50" r="2.4"/></g>';
 var W_STRM = cloud(-6) + '<path d="M34 42l-6 9h6l-4 9 10-12h-6l4-6z" fill="#C2923A"/>';
 function weatherOf(code, day){
-  if (code === 0) return { svg: day ? W_SUN : W_MOON, es:'Despejado', pt:'Céu limpo' };
-  if (code <= 2)  return { svg: day ? W_PART : cloud(0), es:'Parcial nublado', pt:'Parcialmente nublado' };
-  if (code === 3) return { svg: cloud(0), es:'Nublado', pt:'Nublado' };
-  if (code === 45 || code === 48) return { svg: W_FOG, es:'Neblina', pt:'Neblina' };
-  if (code >= 51 && code <= 57) return { svg: W_DRIZ, es:'Llovizna', pt:'Garoa' };
-  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return { svg: W_RAIN, es:'Lluvia', pt:'Chuva' };
-  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { svg: W_SNOW, es:'Nieve', pt:'Neve' };
-  if (code >= 95) return { svg: W_STRM, es:'Tormenta', pt:'Tempestade' };
-  return { svg: cloud(0), es:'', pt:'' };
+  if (code === 0) return { svg: day ? W_SUN : W_MOON, es:'Despejado' };
+  if (code <= 2)  return { svg: day ? W_PART : cloud(0), es:'Parcial nublado' };
+  if (code === 3) return { svg: cloud(0), es:'Nublado' };
+  if (code === 45 || code === 48) return { svg: W_FOG, es:'Neblina' };
+  if (code >= 51 && code <= 57) return { svg: W_DRIZ, es:'Llovizna' };
+  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return { svg: W_RAIN, es:'Lluvia' };
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { svg: W_SNOW, es:'Nieve' };
+  if (code >= 95) return { svg: W_STRM, es:'Tormenta' };
+  return { svg: cloud(0), es:'' };
 }
 
 /* ---------- contenido ---------- */
@@ -271,15 +271,15 @@ function refresh(){
 function apply(d){
   lastData = d;
   setTowers(d.listaTorres);
-  $('urgTxt').textContent = d.panico ? 'Emergencia · Emergência' : 'Aviso urgente · Aviso urgente';
+  $('urgTxt').textContent = 'Aviso urgente · Aviso urgente · Urgent notice';
   $('urg').style.display = d.urgente ? 'flex' : 'none';
   $('tower').textContent = d.torreNombre || (TORRE ? TORRE.replace(/^T/, 'Torre ') : '');
   $('sosMuni').innerHTML = d.seguridad ? 'Seguridad Municipal <b>' + esc(d.seguridad) + '</b>' : '';
   renderTicker(d.cinta || []);
-  renderTraffic(d.trafico);
+  renderTraffic(d.destinos || d.trafico);
 
   var items = d.items || [];
-  var s = JSON.stringify([!!d.panico, items.map(function(x){ return [x.url, x.dur, x.titulo, x.texto, x.link]; })]);
+  var s = JSON.stringify([items.map(function(x){ return [x.url, x.dur, x.titulo, x.texto, x.link]; })]);
   if (s === sig) return;
   sig = s; list = items; idx = -1;
   if (d.urgente || wasUrgent || !current) next();
@@ -328,6 +328,10 @@ function reveal(el, it, ms){
   timer = setTimeout(next, ms);
 }
 
+function tr(t, x){
+  if (!t && !x) return '';
+  return '<hr><div class="pt">' + (t ? '<h2>' + esc(t) + '</h2>' : '') + (x ? '<p>' + esc(x) + '</p>' : '') + '</div>';
+}
 function buildCard(it){
   var c = catOf(it.categoria);
   var el = document.createElement('div');
@@ -336,7 +340,7 @@ function buildCard(it){
   if (it.hasta) {
     var d = new Date(it.hasta);
     var f = function(loc){ return d.toLocaleString(loc, { timeZone:TZ, weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', hourCycle:'h23' }); };
-    until = 'Vigente hasta ' + f('es-CL') + ' · Válido até ' + f('pt-BR');
+    until = 'Vigente hasta ' + f('es-CL');
   }
   el.innerHTML =
     '<div class="wrap">' +
@@ -344,9 +348,7 @@ function buildCard(it){
       '<div class="cat">' + c.es + ' <i>· ' + c.pt + '</i></div></div>' +
       '<h1>' + esc(it.titulo) + '</h1>' +
       (it.texto ? '<p class="body">' + esc(it.texto) + '</p>' : '') +
-      ((it.tituloPt || it.textoPt) ? '<hr><div class="pt">' +
-        (it.tituloPt ? '<h2>' + esc(it.tituloPt) + '</h2>' : '') +
-        (it.textoPt ? '<p>' + esc(it.textoPt) + '</p>' : '') + '</div>' : '') +
+      tr(it.tituloPt, it.textoPt) + tr(it.tituloEn, it.textoEn) +
       (until ? '<div class="until">' + until + '</div>' : '') +
     '</div>';
   return el;
@@ -355,9 +357,8 @@ function buildCard(it){
 function showQr(it){
   var url = '', label = '';
   if (it && it.link) { url = it.link; label = 'Escanea · Escaneie'; }
-  else if (it && /turis/i.test(it.categoria || '') && lastData && lastData.qrTurismo) {
-    url = lastData.qrTurismo; label = 'Descubre Algarrobo<i>Descubra Algarrobo</i>';
-  }
+  else if (it && /turis/i.test(it.categoria || '') && lastData && lastData.qrTurismo) url = lastData.qrTurismo;
+  else if (it && /comerc/i.test(it.categoria || '') && lastData && lastData.qrComercio) url = lastData.qrComercio;
   if (!url || typeof QRCode === 'undefined') { $('qr').style.display = 'none'; qrShown = ''; return; }
   if (url !== qrShown) {
     $('qrCode').innerHTML = '';
@@ -393,10 +394,8 @@ function renderTicker(items){
 var ICON_PLANE = '<svg viewBox="0 0 24 24"><path d="M2.5 19.5h19"/><path d="M4 14.5l14.6-4.2a2 2 0 0 1 1.1 3.8L6.8 17.6 3.6 12l2.1-.6 2 2 3.4-1L7.6 6l2.3-.7 5.3 5.2"/></svg>';
 var ICON_CAR = '<svg viewBox="0 0 24 24"><path d="M4 16.5V12l1.9-4.6A2 2 0 0 1 7.8 6h8.4a2 2 0 0 1 1.9 1.4L20 12v4.5"/><path d="M3 16.5h18"/><path d="M4 12h16"/><circle cx="7.5" cy="16.8" r="1.7"/><circle cx="16.5" cy="16.8" r="1.7"/></svg>';
 var trips = [], tripIdx = 0, tripTimer = null, tripSig = '';
-function fmtMin(n){ var h = Math.floor(n / 60), m = n % 60; return (h ? h + ' h ' : '') + m + ' min'; }
 function renderTraffic(tr){
-  var arr = !tr ? [] : (tr.length !== undefined ? tr : [{ nombre:'Aeropuerto SCL', icono:'avion', min:tr.min, km:tr.km, conTrafico:tr.conTrafico }]);
-  arr = arr.filter(function(t){ return t && t.min; });
+  var arr = (tr && tr.length !== undefined ? tr : []).filter(function(t){ return t && t.km; });
   var sg = JSON.stringify(arr);
   if (sg === tripSig) return;
   tripSig = sg; trips = arr; tripIdx = 0;
@@ -413,8 +412,8 @@ function showTrip(){
   var t = trips[tripIdx];
   $('pIcon').innerHTML = t.icono === 'avion' ? ICON_PLANE : ICON_CAR;
   $('pName').textContent = t.nombre;
-  $('pTime').textContent = fmtMin(t.min);
-  $('pNote').textContent = (t.conTrafico ? 'Con tráfico' : 'Estimado') + ' · ' + t.km + ' km';
+  $('pTime').textContent = t.km + ' km';
+  $('pNote').textContent = 'Distancia por ruta';
 }
 
 /* ---------- clima (Open-Meteo, sin clave) ---------- */
@@ -423,13 +422,21 @@ function renderWeather(w){
   var info = weatherOf(w.weather_code, w.is_day === 1);
   $('wIcon').innerHTML = '<svg viewBox="0 0 64 64">' + info.svg + '</svg>';
   $('wTemp').textContent = Math.round(w.temperature_2m) + '°';
-  $('wDesc').innerHTML = esc(info.es) + '<br><i>' + esc(info.pt) + '</i>';
+  var mm = (w.tmax !== undefined && w.tmin !== undefined)
+    ? '<br><span class="mm">Máx ' + Math.round(w.tmax) + '° · Mín ' + Math.round(w.tmin) + '°</span>' : '';
+  $('wDesc').innerHTML = esc(info.es) + mm;
 }
 function weather(){
   fetch('https://api.open-meteo.com/v1/forecast?latitude=' + LAT + '&longitude=' + LON +
-        '&current=temperature_2m,weather_code,is_day&timezone=America%2FSantiago')
+        '&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=America%2FSantiago')
     .then(function(r){ return r.json(); })
-    .then(function(j){ if (j && j.current) { store('weather', j.current); renderWeather(j.current); } })
+    .then(function(j){
+      if (j && j.current) {
+        var w = j.current;
+        if (j.daily && j.daily.temperature_2m_max) { w.tmax = j.daily.temperature_2m_max[0]; w.tmin = j.daily.temperature_2m_min[0]; }
+        store('weather', w); renderWeather(w);
+      }
+    })
     .catch(function(){ renderWeather(load('weather')); });
 }
 

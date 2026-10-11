@@ -4,7 +4,7 @@ plugins {
 
 // Valores que entrega GitHub Actions (secretos y variables del repo).
 def runNumber = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
-def playerUrl = System.getenv('PLAYER_URL') ?: 'https://USUARIO.github.io/pantallas/'
+def playerUrl = System.getenv('PLAYER_URL') ?: 'https://mavillal.github.io/pantallas/'
 def keystorePath = System.getenv('KEYSTORE_PATH')
 def keystorePass = System.getenv('KEYSTORE_PASS')
 

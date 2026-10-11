@@ -57,8 +57,13 @@ public class SetupActivity extends Activity {
         urlInput.setSingleLine(true);
         urlInput.setTextColor(FG);
         urlInput.setTextSize(18);
-        urlInput.setText(p.getString(MainActivity.K_URL, BuildConfig.PLAYER_URL));
+        urlInput.setText(MainActivity.playerUrl(p));
         root.addView(urlInput);
+        Button defaultUrl = new Button(this);
+        defaultUrl.setText("Usar dirección predeterminada");
+        defaultUrl.setAllCaps(false);
+        defaultUrl.setOnClickListener(v -> urlInput.setText(BuildConfig.PLAYER_URL));
+        root.addView(defaultUrl);
 
         root.addView(text("2. Inicio automático al encender", 20, FG, true), spaced());
         permStatus = text("", 16, MUTED, false);
@@ -83,7 +88,7 @@ public class SetupActivity extends Activity {
         }
         root.addView(grid);
 
-        root.addView(text("Para volver aquí: botón MENÚ del control, o ATRÁS 5 veces seguidas.",
+        root.addView(text("Para volver aquí: en el player presiona ATRÁS u OK y elige \"Configurar\".",
                 14, MUTED, false), spaced());
 
         ScrollView scroll = new ScrollView(this);
@@ -129,7 +134,8 @@ public class SetupActivity extends Activity {
 
     private void save(String torre) {
         String url = urlInput.getText().toString().trim();
-        if (url.isEmpty()) url = BuildConfig.PLAYER_URL;
+        if (url.isEmpty() || url.contains("USUARIO")) url = BuildConfig.PLAYER_URL;
+        if (!url.startsWith("http")) url = "https://" + url;
         getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).edit()
                 .putString(MainActivity.K_URL, url)
                 .putString(MainActivity.K_TORRE, torre)

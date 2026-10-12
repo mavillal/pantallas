@@ -27,7 +27,9 @@ Canva ──► Google Form ──► Sheet + Drive ──► Apps Script (JSON)
 |---|---|---|
 | Título | Respuesta corta | obligatoria |
 | Categoría | Desplegable | Aviso · Corte de servicio · Emergencia · Turismo · Comercio local · Evento |
-| Archivo | Subir archivo | 1 archivo, imágenes y video, máx. 100 MB |
+| Archivo | Subir archivo | **Opcional**. 1 archivo, imágenes y video, máx. 100 MB |
+| Texto del aviso | Párrafo | Opcional. Sin archivo, el player diseña una tarjeta y el Apps Script la traduce al portugués |
+| Link para QR | Respuesta corta | Opcional. Se muestra como QR en la pieza |
 | Desde | Fecha **con "Incluir hora"** | obligatoria |
 | Hasta | Fecha **con "Incluir hora"** | obligatoria (si se deja en 00:00, dura todo ese día) |
 | Torres | Casillas | Todas · T1 · T2 … T11 |
@@ -70,7 +72,7 @@ Canva ──► Google Form ──► Sheet + Drive ──► Apps Script (JSON)
 7. En el TV: HDMI-CEC activado y encendido automático en la entrada del stick. **Alimenta el stick desde un enchufe**, no desde el USB del TV.
 8. **Prueba de fuego**: desenchufa el stick y vuelve a enchufarlo. El player debe aparecer solo en menos de 1 minuto.
 
-Para volver a la configuración: botón **MENÚ** del control, o **ATRÁS 5 veces seguidas**. ATRÁS solo no cierra el player.
+**Menú en pantalla**: en el player, presiona **ATRÁS** u **OK** del control → aparece un menú con *Seguir · Recargar · Configurar*. ATRÁS nunca cierra el player. Si la página no carga (sin internet, error 404), el mismo menú aparece solo, con el motivo, y la app reintenta cada 30 s.
 
 **Actualizar la app**: haz cualquier cambio en `android/` (o Run workflow) y luego, en cada stick, Downloader → misma URL → instalar. La firma se mantiene, así que no hay que desinstalar ni reconfigurar.
 
@@ -78,7 +80,7 @@ Para volver a la configuración: botón **MENÚ** del control, o **ATRÁS 5 vece
 
 ## 2. Reglas de contenido (para el CM)
 
-- **Formato**: 1920×1080 horizontal. PNG/JPG para carteles; MP4 de **menos de 20 MB y menos de 30 s** para animaciones de Canva.
+- **Formato**: 1920×875 px horizontal (tamaño exacto sobre la franja; en Canva: tamaño personalizado). PNG/JPG para carteles; MP4 de **menos de 20 MB y menos de 30 s** para animaciones de Canva.
 - **Bilingüe ES/PT** en todo lo turístico. Título en ambos idiomas y poco texto: se lee a 3 metros y en 10 segundos.
 - **QR obligatorio en turismo**: enlaza a una lista de Google Maps o a una ficha del punto de interés. El turista se lleva la información en su celular; esa es la verdadera conversión.
 - **Mezcla sugerida por playlist**:
@@ -141,3 +143,17 @@ Para volver a la configuración: botón **MENÚ** del control, o **ATRÁS 5 vece
 | Pánico olvidado activado | Apagado automático (`B3`) + registro en `Bitacora` |
 | Nadie puede activar el pánico de noche | Compartir la Sheet como editor con el conserje de turno o el administrador; marcar una casilla es suficiente |
 | El menú no aparece en el celular | Normal: los menús solo funcionan en computador. En el celular se usa la casilla `B1` |
+
+
+## 6. Franja inferior y hojas de configuración (v2)
+
+| Hoja | Para qué |
+|---|---|
+| `Torres` | Nombre que aparece en pantalla por torre (T1 → "Torre Pelícano", por ejemplo) |
+| `Cinta` | Avisos breves que corren en la franja: Texto · Torres · Hasta (opcional) · Activo. Todo en español |
+| `Destinos` | Tiempos de viaje que rotan cada 10 s en la franja (aeropuerto, Isla Negra, Valparaíso…). Nombre, dirección como en Google Maps, ícono (avión/auto) y Activo |
+| `Control` | B1 recarga remota · B2 teléfono de Seguridad Municipal (aparece junto a los números de emergencia) · B3 link de Google Maps para el QR de turismo |
+
+- **Clima**: Open-Meteo, sin clave, se actualiza cada 15 min.
+- **Aeropuerto SCL**: tiempo en auto desde San Alfonso del Mar, calculado con el servicio Maps del Apps Script cada 15 min. Si Google entrega el tráfico actual dice "Con tráfico"; si no, "Estimado".
+- **Emergencias**: SAMU 131 · Bomberos 132 · Carabineros 133 · PDI 134 · Emergencias marítimas 137 (+ Seguridad Municipal si se completa en `Control!B2`).

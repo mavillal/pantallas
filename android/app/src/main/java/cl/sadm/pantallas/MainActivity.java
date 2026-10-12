@@ -41,6 +41,7 @@ public class MainActivity extends Activity {
     static final String K_TORRE = "torre";
     private static final long RETRY_MS = 30_000;
     private static final long MENU_AUTOHIDE_MS = 20_000;
+    private static final String CONTACTO = "mavillal@gmail.com";
 
     private static final int NAVY = Color.parseColor("#E60B2440");
     private static final int SAND = Color.parseColor("#F6F3EC");
@@ -170,7 +171,7 @@ public class MainActivity extends Activity {
     private void showMenu() {
         showingError = false;
         overlayTitle.setText("Torre " + torre());
-        overlayMsg.setText("Versión " + BuildConfig.VERSION_NAME + "\n" + playerUrl(prefs()));
+        overlayMsg.setText("Versión " + BuildConfig.VERSION_NAME + "\nContacto: " + CONTACTO);
         btnSeguir.setText("Seguir");
         showOverlay();
         handler.removeCallbacks(hideMenuTask);

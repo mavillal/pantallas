@@ -242,7 +242,7 @@ function iconoDestino_(v) {
   if (/avi|aero|plane/.test(t)) return 'avion';
   if (/libro|museo|book/.test(t)) return 'libro';
   if (/barco|bote|puerto|lancha|ship/.test(t)) return 'barco';
-  if (/casino|juego|dado/.test(t)) return 'casino';
+  if (/casino|juego|dado|ruleta|apuesta|naipe/.test(t)) return 'casino';
   if (/vino|copa|vinedo|uva/.test(t)) return 'vino';
   if (/edificio|ciudad|centro|city/.test(t)) return 'edificio';
   return 'auto';

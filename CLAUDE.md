@@ -64,6 +64,12 @@ clasp deployments                                      # anota el deploymentId d
 clasp deploy -i <deploymentId> -d "vX.Y"               # nueva versión, MISMA URL
 ```
 
+Ya configurado en este Mac (12-oct-2026): `clasp login` hecho, `apps-script/.clasp.json` (no va al repo) con
+scriptId `1E6nE0XdRAWOJI_8csVg5MNddWJ4PDlb8eDjQAjr7QznmCKLWsmC3xeGn`; `.claspignore` excluye `tests/`.
+deploymentId de los TV = el de la URL `/exec` de arriba (`AKfycbxbUWcw…lu-`). Publicar = desde `apps-script/`:
+`clasp push --force && clasp deploy -i AKfycbxbUWcwKkebleaZLdKZlF-WZJl-lDQyQAGBToPl9vIWZ8BXRY4I9jN9dNuypl0V_lu- -d "vX.Y"`.
+El primer curl tras el deploy puede venir de caché: repetir a los 30 s.
+
 Después de cada deploy: `curl -sL "<URL>?torre=T1"` y confirmar el campo `"version"`. Si se agregan hojas o columnas,
 correr `setup` (menú 📺 Pantallas → ⚙ Instalar / reparar, o `clasp run setup` si está habilitado).
 
@@ -76,10 +82,8 @@ correr `setup` (menú 📺 Pantallas → ⚙ Instalar / reparar, o `clasp run se
 
 ## Estado al 12-oct-2026
 
-- Backend **v4.2** listo en este repo; probado contra una copia real de la Sheet (28 pruebas OK).
-  **Pendiente: publicarlo** (la URL seguía sirviendo una versión antigua: la cinta mostraba avisos de otra torre).
-- `index.html` v4.2 listo (solo español, sin código muerto). Pendiente: push.
-- `android/.../MainActivity.java`: el menú ahora muestra "Contacto: mavillal@gmail.com" en vez de la URL.
-  Pendiente: compilar (push a `android/`) e instalar en el stick.
+- Backend **v4.2 publicado** (implementación @13, misma URL); `?torre=T1` responde `"version":"v4.2"`.
+- `index.html` v4.2 en GitHub Pages. Repo propio en esta carpeta, `gh` con login de mavillal.
+- APK v1.0.7 (menú con "Contacto: mavillal@gmail.com") compilado en Releases. Pendiente: instalarlo en el stick.
 - Form: Mario debe borrar la pregunta "Idiomas" (ya no se usa).
 - `secretos-github.txt` (firma del APK) NO va al repo; Mario lo tiene aparte.

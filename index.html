@@ -142,10 +142,9 @@
   <div id="empty">
     <div class="k">San Alfonso del Mar · Algarrobo</div>
     <h1>Bienvenidos</h1>
-    <h2>Bem-vindos</h2>
     <div class="rule"></div>
   </div>
-  <div id="urg"><span class="dot"></span><span id="urgTxt">Aviso urgente · Aviso urgente</span></div>
+  <div id="urg"><span class="dot"></span><span id="urgTxt">Aviso urgente</span></div>
   <div id="qr"><div class="code" id="qrCode"></div></div>
 </div>
 
@@ -157,7 +156,7 @@
       <div id="date"></div>
     </div>
     <div id="center">
-      <div class="lbl">Avisos · Avisos · Notices</div>
+      <div class="lbl">Avisos</div>
       <div id="tickerBox"><div id="ticker"></div></div>
     </div>
     <div id="right">
@@ -176,7 +175,7 @@
     </div>
   </div>
   <div id="sos">
-    <span class="h">Emergencias · Emergências · Emergency</span>
+    <span class="h">Emergencias</span>
     <span>SAMU <b>131</b></span><span>Bomberos <b>132</b></span><span>Carabineros <b>133</b></span>
     <span>PDI <b>134</b></span><span>Emergencias marítimas <b>137</b></span>
     <span id="sosMuni"></span>
@@ -212,17 +211,17 @@ function esc(s){ return String(s || '').replace(/[&<>"]/g, function(c){ return {
 
 /* ---------- íconos ---------- */
 var CAT = [
-  { re:/corte/i,   color:'var(--fjord)', es:'Corte de servicio', pt:'Interrupção de serviço',
+  { re:/corte/i,   color:'var(--fjord)', es:'Corte de servicio',
     svg:'<path d="M12 3.5c-3.2 4.2-5.8 7.4-5.8 10.6a5.8 5.8 0 0 0 11.6 0c0-3.2-2.6-6.4-5.8-10.6z"/>' },
-  { re:/emerg/i,   color:'var(--brick)', es:'Emergencia', pt:'Emergência',
+  { re:/emerg/i,   color:'var(--brick)', es:'Emergencia',
     svg:'<path d="M12 3.8l9 15.7H3z"/><path d="M12 10v4.2"/><path d="M12 17.1v.1"/>' },
-  { re:/turis/i,   color:'var(--sea)',   es:'Turismo', pt:'Turismo',
+  { re:/turis/i,   color:'var(--sea)',   es:'Turismo',
     svg:'<path d="M12 21s-6.4-5.9-6.4-11a6.4 6.4 0 0 1 12.8 0c0 5.1-6.4 11-6.4 11z"/><circle cx="12" cy="10" r="2.3"/>' },
-  { re:/comerc/i,  color:'var(--clay)',  es:'Comercio local', pt:'Comércio local',
+  { re:/comerc/i,  color:'var(--clay)',  es:'Comercio local',
     svg:'<path d="M5 8.5h14l-1.1 11.5H6.1z"/><path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"/>' },
-  { re:/evento/i,  color:'var(--sage)',  es:'Evento', pt:'Evento',
+  { re:/evento/i,  color:'var(--sage)',  es:'Evento',
     svg:'<rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/>' },
-  { re:/.*/,       color:'var(--slate)', es:'Aviso', pt:'Aviso',
+  { re:/.*/,       color:'var(--slate)', es:'Aviso',
     svg:'<circle cx="12" cy="12" r="8.6"/><path d="M12 11v5.2"/><path d="M12 7.9v.1"/>' }
 ];
 function catOf(c){ for (var i = 0; i < CAT.length; i++) if (CAT[i].re.test(c || '')) return CAT[i]; return CAT[CAT.length-1]; }
@@ -271,7 +270,6 @@ function refresh(){
 function apply(d){
   lastData = d;
   setTowers(d.listaTorres);
-  $('urgTxt').textContent = 'Aviso urgente · Aviso urgente · Urgent notice';
   $('urg').style.display = d.urgente ? 'flex' : 'none';
   $('tower').textContent = d.torreNombre || (TORRE ? TORRE.replace(/^T/, 'Torre ') : '');
   $('sosMuni').innerHTML = d.seguridad ? 'Seguridad Municipal <b>' + esc(d.seguridad) + '</b>' : '';
@@ -328,9 +326,9 @@ function reveal(el, it, ms){
   timer = setTimeout(next, ms);
 }
 
-function tr(t, x){
-  if (!t && !x) return '';
-  return '<hr><div class="pt">' + (t ? '<h2>' + esc(t) + '</h2>' : '') + (x ? '<p>' + esc(x) + '</p>' : '') + '</div>';
+function titleSize(t){
+  var n = String(t || '').length;
+  return n <= 40 ? 7.4 : n <= 70 ? 6 : n <= 110 ? 5 : 4.2;
 }
 function buildCard(it){
   var c = catOf(it.categoria);
@@ -345,18 +343,17 @@ function buildCard(it){
   el.innerHTML =
     '<div class="wrap">' +
       '<div class="head"><div class="ico" style="background:' + c.color + '"><svg viewBox="0 0 24 24">' + c.svg + '</svg></div>' +
-      '<div class="cat">' + c.es + ' <i>· ' + c.pt + '</i></div></div>' +
-      '<h1>' + esc(it.titulo) + '</h1>' +
+      '<div class="cat">' + c.es + '</div></div>' +
+      '<h1 style="font-size:' + titleSize(it.titulo) + 'vh">' + esc(it.titulo) + '</h1>' +
       (it.texto ? '<p class="body">' + esc(it.texto) + '</p>' : '') +
-      tr(it.tituloPt, it.textoPt) + tr(it.tituloEn, it.textoEn) +
       (until ? '<div class="until">' + until + '</div>' : '') +
     '</div>';
   return el;
 }
 
 function showQr(it){
-  var url = '', label = '';
-  if (it && it.link) { url = it.link; label = 'Escanea · Escaneie'; }
+  var url = '';
+  if (it && it.link) url = it.link;
   else if (it && /turis/i.test(it.categoria || '') && lastData && lastData.qrTurismo) url = lastData.qrTurismo;
   else if (it && /comerc/i.test(it.categoria || '') && lastData && lastData.qrComercio) url = lastData.qrComercio;
   if (!url || typeof QRCode === 'undefined') { $('qr').style.display = 'none'; qrShown = ''; return; }
@@ -372,14 +369,12 @@ function showEmpty(on){ $('empty').style.display = on ? 'flex' : 'none'; }
 
 /* ---------- cinta ---------- */
 function renderTicker(items){
-  if (!items.length) items = [{ es:'Bienvenidos a San Alfonso del Mar', pt:'Bem-vindos ao San Alfonso del Mar' }];
+  if (!items.length) items = [{ es:'Bienvenidos a San Alfonso del Mar' }];
   var s = JSON.stringify(items);
   if (s === tickerSig) return;
   tickerSig = s;
   var one = items.map(function(x){
-    return '<span>' + esc(x.es) + '</span>' +
-      (x.pt ? '<span class="sep"></span><span class="pt">' + esc(x.pt) + '</span>' : '') +
-      (x.en ? '<span class="sep"></span><span class="en">' + esc(x.en) + '</span>' : '');
+    return '<span>' + esc(x.es) + '</span>';
   }).join('<span class="sep"></span>') + '<span class="sep"></span>';
   var t = $('ticker');
   t.style.animation = 'none';

@@ -73,7 +73,7 @@ function destIdx_(sh) {
   };
 }
 const DEST = {
-  headers: ['Nombre en pantalla', 'Dirección (como en Google Maps)', 'Ícono (avión / auto)', 'Activo',
+  headers: ['Nombre en pantalla', 'Dirección (como en Google Maps)', 'Ícono (avión, auto, libro, barco, vino, casino, edificio)', 'Activo',
             'Km por ruta (se calcula solo)'],
 };
 const DESTINOS_INICIALES = [
@@ -205,9 +205,21 @@ function getDestinos_() {
     .filter(r => String(g(r, ix.nombre)).trim() && !(ix.activo && isNo_(g(r, ix.activo))) && Number(g(r, ix.km)) > 0)
     .map(r => ({
       nombre: String(g(r, ix.nombre)).trim(),
-      icono:  /avi|aero|plane/.test(norm_(g(r, ix.icono))) ? 'avion' : 'auto',
+      icono:  iconoDestino_(g(r, ix.icono)),
       km:     Math.round(Number(g(r, ix.km)))
     }));
+}
+
+/** Ícono escrito en la hoja (palabra libre) → clave que dibuja el player. */
+function iconoDestino_(v) {
+  const t = norm_(v);
+  if (/avi|aero|plane/.test(t)) return 'avion';
+  if (/libro|museo|book/.test(t)) return 'libro';
+  if (/barco|bote|puerto|lancha|ship/.test(t)) return 'barco';
+  if (/casino|juego|dado/.test(t)) return 'casino';
+  if (/vino|copa|vinedo|uva/.test(t)) return 'vino';
+  if (/edificio|ciudad|centro|city/.test(t)) return 'edificio';
+  return 'auto';
 }
 
 /** Calcula los km por ruta que falten (máximo "limite" por llamada). */

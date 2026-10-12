@@ -32,7 +32,8 @@ import android.widget.TextView;
  * Pantalla completa con el player web del condominio.
  * - Mantiene la pantalla encendida y reintenta sola si falla la carga.
  * - ATRÁS abre un menú en pantalla (Seguir · Recargar · Configurar); nunca cierra el player.
- * - Si la página no carga (sin internet, error 404…), muestra el mismo menú con el motivo.
+ * - Si la página no carga (sin internet, error 404…), muestra la pantalla de Bienvenida con el contacto
+ *   y reintenta cada 30 s; el motivo se ve en el menú (OK).
  */
 public class MainActivity extends Activity {
 
@@ -47,6 +48,20 @@ public class MainActivity extends Activity {
     private static final int SAND = Color.parseColor("#F6F3EC");
     private static final int MUTED = Color.parseColor("#BFD0DA");
 
+    /** Pantalla de Bienvenida (mismo diseño que el player) mientras el player no carga. */
+    private static final String WELCOME_HTML = "<!doctype html><html><head><meta charset='utf-8'>"
+            + "<meta name='viewport' content='width=device-width,initial-scale=1'><style>"
+            + "html,body{margin:0;height:100%;overflow:hidden;background:#F3EFE8;color:#1E2A32;"
+            + "font-family:Inter,system-ui,Roboto,sans-serif;display:flex;flex-direction:column;"
+            + "align-items:center;justify-content:center;text-align:center}"
+            + ".k{font-size:2.6vh;letter-spacing:.42em;text-transform:uppercase;color:#6B7780}"
+            + "h1{font-size:15vh;font-weight:300;letter-spacing:-.03em;margin:2.4vh 0 3vh}"
+            + ".r{width:6vw;border-top:2px solid #2F7D78}"
+            + ".c{position:fixed;bottom:3vh;left:0;right:0;font-size:2vh;color:#9AA3AA;letter-spacing:.04em}"
+            + "</style></head><body><div class='k'>San Alfonso del Mar · Algarrobo</div>"
+            + "<h1>Bienvenidos</h1><div class='r'></div>"
+            + "<div class='c'>Contacto: " + CONTACTO + "</div></body></html>";
+
     private WebView web;
     private LinearLayout overlay;
     private TextView overlayTitle;
@@ -57,7 +72,7 @@ public class MainActivity extends Activity {
     private final Runnable reloadTask = this::load;
     private final Runnable hideMenuTask = this::hideOverlay;
     private boolean loadFailed = false;
-    private boolean showingError = false;
+    private String lastError = "";
 
     /** URL guardada; si está vacía o es la de ejemplo, usa la que trae la app. */
     static String playerUrl(SharedPreferences p) {
@@ -169,23 +184,13 @@ public class MainActivity extends Activity {
     }
 
     private void showMenu() {
-        showingError = false;
         overlayTitle.setText("Torre " + torre());
-        overlayMsg.setText("Versión " + BuildConfig.VERSION_NAME + "\nContacto: " + CONTACTO);
-        btnSeguir.setText("Seguir");
+        overlayMsg.setText("Versión " + BuildConfig.VERSION_NAME + "\nContacto: " + CONTACTO
+                + (loadFailed ? "\n\nNo se pudo cargar el player: " + lastError
+                        + "\nReintento automático cada 30 segundos." : ""));
         showOverlay();
         handler.removeCallbacks(hideMenuTask);
         handler.postDelayed(hideMenuTask, MENU_AUTOHIDE_MS);
-    }
-
-    private void showError(String why) {
-        showingError = true;
-        overlayTitle.setText("No se pudo cargar el player");
-        overlayMsg.setText(why + "\n\nReintento automático cada 30 segundos."
-                + "\nContacto: " + CONTACTO);
-        btnSeguir.setText("Ocultar");
-        handler.removeCallbacks(hideMenuTask);
-        showOverlay();
     }
 
     private void showOverlay() {
@@ -217,7 +222,8 @@ public class MainActivity extends Activity {
 
     private void failed(String why) {
         loadFailed = true;
-        showError(why);
+        lastError = why;
+        if (web != null) web.loadDataWithBaseURL(null, WELCOME_HTML, "text/html", "utf-8", null);
         handler.removeCallbacks(reloadTask);
         handler.postDelayed(reloadTask, RETRY_MS);
     }
@@ -238,11 +244,6 @@ public class MainActivity extends Activity {
                         ? "Error 404: la página del player no responde."
                         : "El servidor respondió con error " + code + ".");
             }
-        }
-
-        @Override
-        public void onPageFinished(WebView view, String url) {
-            if (!loadFailed && showingError) hideOverlay();
         }
 
         @Override
@@ -285,7 +286,7 @@ public class MainActivity extends Activity {
         }
         if (overlayVisible()) {
             handler.removeCallbacks(hideMenuTask);
-            if (!showingError) handler.postDelayed(hideMenuTask, MENU_AUTOHIDE_MS);
+            handler.postDelayed(hideMenuTask, MENU_AUTOHIDE_MS);
         }
         return super.dispatchKeyEvent(event);
     }

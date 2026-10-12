@@ -22,6 +22,13 @@
   #stage{position:absolute;top:0;left:0;right:0;bottom:var(--band);background:var(--sand);overflow:hidden}
   .slide{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .9s ease}
   .slide.on{opacity:1}
+  /* afiche: la misma imagen en miniatura estirada hace de fondo desenfocado (sin filtros: liviano para el stick) */
+  .pic .bg{position:absolute;top:0;left:0;right:0;bottom:0;background-size:cover;background-position:center}
+  .pic .bg:after{content:"";position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(243,239,232,.28)}
+  .pic img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain}
+
+  /* horario nocturno: pantalla negra */
+  #night{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;display:none;z-index:50}
 
   /* tarjeta de aviso de texto */
   .card{display:flex;align-items:center;justify-content:center;padding:5vh 8vw}
@@ -121,6 +128,8 @@
 </style>
 </head>
 <body>
+<div id="night"></div>
+
 <div id="picker">
   <div class="k">San Alfonso del Mar · Algarrobo</div>
   <h1>Pantallas</h1>
@@ -204,6 +213,11 @@ function towersFallback(){ var a = []; for (var i = 1; i <= 11; i++) a.push({ co
 function towers(){ return TORRES.length ? TORRES : (load('torres') || towersFallback()); }
 function setTowers(l){ if (l && l.length) { TORRES = l; store('torres', l); } }
 
+/* Imágenes de Drive: pedirlas ya reducidas al tamaño del escenario (protege al stick de fotos de 12 MP). */
+function lh3(url){ return /^https:\/\/lh3\.googleusercontent\.com\/d\/[-\w]+$/.test(url || ''); }
+function sized(url){ return lh3(url) ? url + '=w1920-h875' : url; }
+function tiny(url){ return lh3(url) ? url + '=w40' : ''; }
+
 function store(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
 function load(k){ try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){ return null; } }
 function esc(s){ return String(s || '').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
@@ -251,7 +265,7 @@ function refresh(){
   fetch(API + '?torre=' + encodeURIComponent(TORRE) + '&ping=1&t=' + Date.now())
     .then(function(r){ return r.json(); })
     .then(function(d){
-      store('playlist', d);
+      store('playlist_' + TORRE, d);
       if (d.recarga !== undefined && d.recarga !== '') {
         if (window.__recarga === undefined) window.__recarga = d.recarga;
         else if (d.recarga !== window.__recarga) { location.reload(); return; }
@@ -259,7 +273,7 @@ function refresh(){
       apply(d);
     })
     .catch(function(e){
-      var d = load('playlist');
+      var d = load('playlist_' + TORRE);
       if (d && !list.length) apply(d);
       else if (!list.length) showEmpty(true);
       console.warn('No se pudo leer el contenido. Revisa la constante API.', e);
@@ -281,6 +295,7 @@ function apply(d){
   sig = s; list = items; idx = -1;
   if (d.urgente || wasUrgent || !current) next();
   wasUrgent = !!d.urgente;
+  night();
 }
 
 function next(){
@@ -299,10 +314,17 @@ function next(){
 
   var isVideo = it.tipo === 'video';
   var m = document.createElement(isVideo ? 'video' : 'img');
-  m.className = 'slide';
+  var box = m;
+  if (isVideo) m.className = 'slide';
+  else {
+    box = document.createElement('div');
+    box.className = 'slide pic';
+    if (tiny(it.url)) box.innerHTML = '<div class="bg" style="background-image:url(\'' + tiny(it.url) + '\')"></div>';
+    box.appendChild(m);
+  }
   var shown = false;
-  var fail = function(){ if (!shown){ m.remove(); timer = setTimeout(next, 500); } };
-  var show = function(){ if (shown) return; shown = true; reveal(m, it, isVideo ? MAX_VIDEO_MS : (it.dur || 10) * 1000); };
+  var fail = function(){ if (!shown){ box.remove(); timer = setTimeout(next, 500); } };
+  var show = function(){ if (shown) return; shown = true; reveal(box, it, isVideo ? MAX_VIDEO_MS : (it.dur || 10) * 1000); };
   if (isVideo){
     m.muted = true; m.playsInline = true; m.autoplay = true; m.preload = 'auto';
     m.addEventListener('loadeddata', show, { once:true });
@@ -311,8 +333,8 @@ function next(){
     m.addEventListener('load', show, { once:true });
   }
   m.addEventListener('error', fail, { once:true });
-  $('stage').insertBefore(m, $('urg'));
-  m.src = it.url;
+  $('stage').insertBefore(box, $('urg'));
+  m.src = isVideo ? it.url : sized(it.url);
   timer = setTimeout(fail, LOAD_TIMEOUT_MS);
 }
 
@@ -467,6 +489,17 @@ function tick(){
   $('date').textContent = ds.charAt(0).toUpperCase() + ds.slice(1);
   var hm = now.toLocaleTimeString('en-GB', { timeZone:TZ, hour:'2-digit', minute:'2-digit' });
   if (hm === '04:00' && performance.now() > 120000) location.reload();
+  night();
+}
+
+/* ---------- horario nocturno (Control → "Pantalla negra desde / hasta") ---------- */
+function night(){
+  var n = lastData && lastData.noche, on = false;
+  if (n && n.desde && n.hasta) {
+    var hm = new Date().toLocaleTimeString('en-GB', { timeZone:TZ, hour:'2-digit', minute:'2-digit' });
+    on = n.desde < n.hasta ? (hm >= n.desde && hm < n.hasta) : (hm >= n.desde || hm < n.hasta);
+  }
+  $('night').style.display = on ? 'block' : 'none';
 }
 
 /* ---------- selector de pantallas ---------- */
@@ -541,7 +574,7 @@ if (!TORRE) {
 } else {
   $('tower').textContent = TORRE.replace(/^T/, 'Torre ');
   showEmpty(true);
-  var cached = load('playlist'); if (cached) apply(cached);
+  var cached = load('playlist_' + TORRE); if (cached) apply(cached);
   renderWeather(load('weather'));
   refresh(); setInterval(refresh, REFRESH_MS);
   weather(); setInterval(weather, WEATHER_MS);

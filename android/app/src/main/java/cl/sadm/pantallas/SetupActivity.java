@@ -18,10 +18,20 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Configuración de un stick (una sola vez):
  *  1. Permiso de inicio automático ("Mostrar sobre otras apps"), necesario en Android 10+.
- *  2. Torre de este TV.
+ *  2. Torre de este TV (la lista sale de la hoja Torres vía el backend; sin internet, T1…T{NUM_TORRES}).
  * La URL del player viene fija en el APK (PLAYER_URL) y no se muestra en pantalla.
  */
 public class SetupActivity extends Activity {
@@ -34,12 +44,14 @@ public class SetupActivity extends Activity {
 
     private TextView permStatus;
     private Button permButton;
+    private GridLayout grid;
+    private String torreActual;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         SharedPreferences p = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE);
-        String torreActual = p.getString(MainActivity.K_TORRE, "");
+        torreActual = p.getString(MainActivity.K_TORRE, "");
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -60,19 +72,13 @@ public class SetupActivity extends Activity {
         root.addView(permButton);
 
         root.addView(text("2. ¿Qué torre es este TV?  (elige para terminar)", 20, FG, true), spaced());
-        GridLayout grid = new GridLayout(this);
+        grid = new GridLayout(this);
         grid.setColumnCount(6);
-        for (int i = 1; i <= BuildConfig.NUM_TORRES; i++) {
-            final String t = "T" + i;
-            Button b = new Button(this);
-            b.setText(t);
-            b.setTextSize(20);
-            b.setMinWidth(dp(110));
-            b.setOnClickListener(v -> save(t));
-            grid.addView(b);
-            if (t.equals(torreActual)) b.post(b::requestFocus);
-        }
+        List<String[]> porDefecto = new ArrayList<>();
+        for (int i = 1; i <= BuildConfig.NUM_TORRES; i++) porDefecto.add(new String[]{"T" + i, ""});
+        showTorres(porDefecto);
         root.addView(grid);
+        loadTorres();
 
         root.addView(text("Para volver aquí: en el player presiona ATRÁS u OK y elige \"Configurar\".",
                 14, MUTED, false), spaced());
@@ -81,6 +87,53 @@ public class SetupActivity extends Activity {
         scroll.setBackgroundColor(BG);
         scroll.addView(root);
         setContentView(scroll);
+    }
+
+    /** Botones de torre: código y, si viene de la hoja Torres, su nombre debajo. */
+    private void showTorres(List<String[]> torres) {
+        grid.removeAllViews();
+        for (String[] t : torres) {
+            final String codigo = t[0];
+            Button b = new Button(this);
+            b.setText(t[1].isEmpty() || t[1].equalsIgnoreCase(codigo) ? codigo : codigo + "\n" + t[1]);
+            b.setTextSize(18);
+            b.setAllCaps(false);
+            b.setMinWidth(dp(110));
+            b.setOnClickListener(v -> save(codigo));
+            grid.addView(b);
+            if (codigo.equals(torreActual)) b.post(b::requestFocus);
+        }
+    }
+
+    /** Lee la lista de torres del backend en segundo plano (si falla, quedan T1…T{NUM_TORRES}). */
+    private void loadTorres() {
+        new Thread(() -> {
+            HttpURLConnection c = null;
+            try {
+                c = (HttpURLConnection) new URL(BuildConfig.API_URL).openConnection();
+                c.setConnectTimeout(8000);
+                c.setReadTimeout(10000);
+                c.setInstanceFollowRedirects(true);
+                StringBuilder sb = new StringBuilder();
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
+                    String line;
+                    while ((line = r.readLine()) != null) sb.append(line);
+                }
+                JSONArray arr = new JSONObject(sb.toString()).optJSONArray("listaTorres");
+                if (arr == null || arr.length() == 0) return;
+                List<String[]> torres = new ArrayList<>();
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject o = arr.getJSONObject(i);
+                    String codigo = o.optString("codigo", "").trim().toUpperCase();
+                    if (!codigo.isEmpty()) torres.add(new String[]{codigo, o.optString("nombre", "").trim()});
+                }
+                if (!torres.isEmpty()) runOnUiThread(() -> { if (!isFinishing()) showTorres(torres); });
+            } catch (Exception ignored) {
+                // sin internet: se quedan los botones por defecto
+            } finally {
+                if (c != null) c.disconnect();
+            }
+        }).start();
     }
 
     @Override

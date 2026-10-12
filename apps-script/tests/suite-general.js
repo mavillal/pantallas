@@ -26,13 +26,14 @@ class Range {
   offset(dr,dc){ return new Range(this.sh,this.r+dr,this.c+dc,this.nr,this.nc); }
   getValues(){ const o=[]; for(let i=0;i<this.nr;i++){const row=[];for(let j=0;j<this.nc;j++) row.push(this.sh.get(this.r+i,this.c+j)); o.push(row);} return o; }
   getValue(){ return this.sh.get(this.r,this.c); }
+  getDisplayValues(){ return this.getValues().map(r=>r.map(v=>v===null||v===undefined?'':String(v))); }
   setValues(v){ v.forEach((row,i)=>row.forEach((x,j)=>this.sh.set(this.r+i,this.c+j,x))); return this; }
   setValue(x){ for(let i=0;i<this.nr;i++)for(let j=0;j<this.nc;j++) this.sh.set(this.r+i,this.c+j,x); return this; }
   clearContent(){ return this.setValue(''); }
   insertCheckboxes(){ for(let i=0;i<this.nr;i++)for(let j=0;j<this.nc;j++){ this.sh.val[(this.r+i)+','+(this.c+j)]='cb'; const v=this.sh.get(this.r+i,this.c+j); if(v!==true&&v!==false) this.sh.set(this.r+i,this.c+j,false);} return this; }
   clearDataValidations(){ for(let i=0;i<this.nr;i++)for(let j=0;j<this.nc;j++) delete this.sh.val[(this.r+i)+','+(this.c+j)]; return this; }
   getDataValidation(){ return this.sh.val[this.r+','+this.c] ? {} : null; }
-  setFontWeight(){return this;} setBackground(){return this;} setFontColor(){return this;} setFontSize(){return this;} setNumberFormat(){return this;}
+  setFontWeight(){return this;} setBackground(){return this;} setFontColor(){return this;} setFontSize(){return this;} setNumberFormat(){return this;} setFormula(){return this;}
 }
 const sheets = {};
 const ss = { getSheetByName:n=>sheets[n]||null, insertSheet:n=>(sheets[n]=new Sheet(n)), deleteSheet:s=>delete sheets[s.name], toast:(m)=>console.log('  [toast]',m) };
@@ -42,10 +43,15 @@ global.PropertiesService = { getScriptProperties:()=>({getProperty:k=>props[k]||
 global.ScriptApp = { getProjectTriggers:()=>[], deleteTrigger(){}, newTrigger:()=>({forSpreadsheet(){return this},onFormSubmit(){return this},onEdit(){return this},create(){}}) };
 global.Utilities = { formatDate:(d,tz,f)=>{ const x=new Date(d.getTime()-3*3600e3); const p=n=>String(n).padStart(2,'0'); return f==='HH:mm'?p(x.getUTCHours())+':'+p(x.getUTCMinutes()):'x'; } };
 global.Maps = { DirectionFinder:{Mode:{DRIVING:'d'}}, newDirectionFinder:()=>{ let dest=''; const o={setOrigin(){return o},setDestination(d){dest=d;return o},setMode(){return o},getDirections(){ return {status:'OK',routes:[{legs:[{distance:{value: dest.length*2000}}]}]}; }}; return o; } };
+// Caché: apagada por defecto (las pruebas editan la hoja directo); la sección de caché la enciende.
+const cacheMem = {}; let cacheOn = false;
+global.CacheService = { getScriptCache:()=>({ get:k=>cacheOn?(cacheMem[k]||null):null, put:(k,v)=>{ if(cacheOn) cacheMem[k]=v; }, removeAll:ks=>ks.forEach(k=>delete cacheMem[k]) }) };
+const mails = [];
+global.MailApp = { sendEmail:(to,subj,body)=>mails.push({to,subj,body}) };
 global.LockService = { getScriptLock:()=>({tryLock:()=>true,releaseLock(){}}) };
 global.DriveApp = { Access:{ANYONE_WITH_LINK:1}, Permission:{VIEW:1}, getFileById:id=>({setSharing(){}, getMimeType:()=> id.startsWith('vid')?'video/mp4':'image/png', getId:()=>id}) };
 global.ContentService = { MimeType:{JSON:1}, createTextOutput:t=>({setMimeType(){return t}}) };
-eval(fs.readFileSync(process.argv[2],'utf8') + '\nObject.assign(global,{recargarPantallas,doGet,setup,onFormSubmit,alEditar,prepararCinta_,lastTextRow_});');
+eval(fs.readFileSync(process.argv[2],'utf8') + '\nObject.assign(global,{recargarPantallas,doGet,setup,onFormSubmit,alEditar,prepararCinta_,lastTextRow_,hora_});');
 
 // ---------- Datos que replican tu Sheet actual ----------
 sheets['Cinta'] = new Sheet('Cinta', [
@@ -83,7 +89,7 @@ check(sheets['Destinos'].get(2,5)>0, 'Destinos: km calculado para el aeropuerto 
 console.log('\n2) Lo que recibe la pantalla de T1 y T2');
 const j1 = JSON.parse(doGet({parameter:{torre:'T1'}}));
 const j2 = JSON.parse(doGet({parameter:{torre:'T2'}}));
-check(j1.version==='v4.2', 'versión '+j1.version);
+check(j1.version==='v4.3', 'versión '+j1.version);
 check(j1.cinta.map(x=>x.es).join(' / ')==='Recuerde respetar los horarios de piscina / Recuerde estamos cerca de la playa / Cuidado con el piso mojado', 'cinta T1 (3 activos): '+j1.cinta.map(x=>x.es).join(' / '));
 check(j2.cinta.length===2, 'cinta T2 no incluye el aviso solo de T1');
 check(j1.cinta.every(x=>Object.keys(x).join()==='es'), 'cinta solo en español (sin pt/en)');
@@ -95,7 +101,7 @@ check(!/"pt"|"en"|tituloPt|textoPt/.test(JSON.stringify(j1)), 'el JSON no trae t
 
 console.log('\n3) Publicar desde el Form');
 const R = sheets['Respuestas de formulario 1'];
-const submit = (vals) => { const row=R.getLastRow()+1; H.forEach((h,i)=>R.set(row,i+1, vals[h]||'')); const nv={}; H.forEach(h=>nv[h]=[vals[h]||'']); onFormSubmit({range:R.getRange(row,1,1,H.length), namedValues:nv}); return row; };
+const submit = (vals) => { const hh=R.d[0].slice(); const row=R.getLastRow()+1; hh.forEach((h,i)=>R.set(row,i+1, vals[h]||'')); const nv={}; hh.forEach(h=>nv[h]=[vals[h]||'']); onFormSubmit({range:R.getRange(row,1,1,hh.length), namedValues:nv}); return row; };
 const now = '2020-01-01 00:00';
 const later = '2099-12-31 00:00';
 submit({'Título':'Corte de agua','Categoría':'Corte de servicio','Texto del aviso':'Mañana de 9 a 14 h','Desde':now,'Hasta':later,'Torres':'Todas','Prioridad':'Normal'});
@@ -116,4 +122,46 @@ check(sheets['Destinos'].get(4,4)===true, 'destino nuevo queda Activo=✓');
 check(sheets['Control'].get(1,2)===false && props.recarga, 'casilla Recargar: envía recarga y se desmarca sola');
 
 console.log("\n5) setup por segunda vez"); const antes=JSON.stringify(c.d.slice(0,lastTextRow_(c,1))); setup(); check(JSON.stringify(c.d.slice(0,lastTextRow_(c,1)))===antes, "la Cinta queda idéntica (" + (lastTextRow_(c,1)-1) + " avisos)"); check(JSON.parse(doGet({parameter:{torre:"T2"}})).cinta.length===4, "T2 sigue viendo sus 4 avisos");
+
+console.log('\n6) Caché de 60 s');
+cacheOn = true;
+const t1a = doGet({parameter:{torre:'T1'}});
+R.set(2,2,'Expo cambiada a mano');                       // edición directa: sin alEditar no se ve aún
+check(doGet({parameter:{torre:'T1'}}) === t1a, 'la segunda consulta usa la respuesta guardada');
+alEditar({range:R.getRange(2,2)});
+check(JSON.parse(doGet({parameter:{torre:'T1'}})).items[0].titulo === 'Expo cambiada a mano', 'al editar la Sheet se borra la caché y se ve el cambio');
+submit({'Título':'Aviso nuevo','Texto del aviso':'x','Desde':now,'Hasta':later,'Torres':'T1','Prioridad':'Normal'});
+check(JSON.parse(doGet({parameter:{torre:'T1'}})).items.some(x=>x.titulo==='Aviso nuevo'), 'al llegar un Form se borra la caché y aparece el aviso');
+cacheOn = false;
+
+console.log('\n7) Estado: solo torres reales y cada 2 min');
+const est = () => sheets['Estado'].d.map(r=>r[0]);
+cacheOn = true;
+doGet({parameter:{torre:'XXX',ping:'1'}}); doGet({parameter:{torre:'1',ping:'1'}});
+check(!est().includes('XXX') && !est().includes('1'), 'torres inventadas ("XXX", "1") no se anotan');
+doGet({parameter:{torre:'T2',ping:'1'}});
+const filasT2 = est().filter(x=>x==='T2').length;
+const marca = sheets['Estado'].d.find(r=>r[0]==='T2')[1];
+doGet({parameter:{torre:'T2',ping:'1'}});
+check(filasT2===1 && sheets['Estado'].d.find(r=>r[0]==='T2')[1]===marca, 'T2 se anota una vez y no se reescribe en cada consulta');
+cacheOn = false;
+
+console.log('\n8) Errores del Form avisan por correo');
+mails.length = 0;
+global.DriveApp.getFileById = id => ({ setSharing(){ throw new Error('Tu organización no permite compartir con cualquiera'); }, getMimeType:()=> id.startsWith('pdf') ? 'application/pdf' : 'image/png' });
+const rPdf = submit({'Título':'Menú PDF','Archivo':'https://drive.google.com/open?id=pdf1234567890123456789012345','Torres':'T1'});
+check(/^ERROR: .*application\/pdf/.test(R.get(rPdf, R.d[0].indexOf('Tipo')+1)) && !R.get(rPdf, R.d[0].indexOf('URL')+1), 'un PDF queda marcado "ERROR" en la fila y no sale en pantalla');
+const rImg = submit({'Título':'Foto','Archivo':'https://drive.google.com/open?id=img9234567890123456789012345','Torres':'T1'});
+check(/^ERROR: .*compartir/.test(R.get(rImg, R.d[0].indexOf('Tipo')+1)), 'si Drive no deja compartir, queda el error en la fila');
+check(mails.length===2 && mails[0].to==='mavillal@gmail.com' && /Menú PDF/.test(mails[0].subj), 'llegan 2 correos de alerta a mavillal@gmail.com: "'+(mails[0]||{}).subj+'"');
+
+console.log('\n9) Horario nocturno y limpieza');
+check(hora_('7:00')==='07:00' && hora_('00:00:00')==='00:00' && hora_('abc')==='', 'horas: "7:00"→07:00, "00:00:00"→00:00, texto→vacío');
+const jn = JSON.parse(doGet({parameter:{torre:'T1'}}));
+check(jn.noche && jn.noche.desde==='00:00' && jn.noche.hasta==='07:00', 'Control trae pantalla negra 00:00–07:00 por defecto');
+check(sheets['Control'].d.some(r=>/correo/i.test(r[0]) && r[1]==='mavillal@gmail.com'), 'Control tiene "Correo para alertas"');
+check(!R.d[0].includes('Idiomas') && !R.d[0].includes('Título PT') && !R.d[0].includes('Texto PT'), 'setup borra Idiomas, Título PT y Texto PT de las respuestas');
+const cRow = sheets['Control'].d.findIndex(r=>/negra desde/i.test(r[0]))+1;
+sheets['Control'].set(cRow,2,'');
+check(JSON.parse(doGet({parameter:{torre:'T1'}})).noche===null, 'si se borra la hora, no hay pantalla negra');
 console.log('\n' + (ok ? 'TODO OK' : 'HAY FALLAS'));

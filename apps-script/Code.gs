@@ -1,6 +1,6 @@
 /**
  * PANTALLAS SAN ALFONSO DEL MAR — Backend (Google Apps Script vinculado a la Sheet "Pantallas-Contenido")
- * Versión 4.0 — todo en español, sin traducciones
+ * Versión 4.3 — todo en español, sin traducciones
  *
  * Web App:
  *   GET ?torre=T1          -> JSON con lo que debe mostrar esa torre
@@ -15,13 +15,20 @@
  *   Control                     recargar pantallas, teléfono municipal, links de QR
  *   Estado                      última conexión de cada pantalla
  *
- * Instalación: pegar este código, guardar, elegir "setup" y Ejecutar. Luego Implementar → Nueva versión.
+ * Publicación: desde el repo con clasp (ver CLAUDE.md): `clasp push` + `clasp deploy -i <id>` (misma URL).
+ * Si se agregan hojas, columnas o permisos: menú 📺 Pantallas → ⚙ Instalar / reparar.
+ *
+ * Rendimiento: la respuesta de cada torre se guarda 60 s en caché y se borra al editar la Sheet o llegar un Form.
+ * Los km de Destinos NO se calculan en cada consulta (solo al editar la dirección, en el menú o en setup).
  */
 
-const VERSION = 'v4.2';
+const VERSION = 'v4.3';
 const TZ = 'America/Santiago';
 const DEFAULT_DUR = 10; // segundos por pieza
 const ORIGEN = 'San Alfonso del Mar, Algarrobo, Valparaíso, Chile';
+const CACHE_S = 60;             // segundos que se reutiliza la respuesta de una torre
+const PING_CADA_S = 120;        // cada cuánto se anota la conexión de una torre en Estado
+const CORREO_DEFECTO = 'mavillal@gmail.com';
 
 const SHEET_CONTENT  = 'Respuestas de formulario 1';
 const SHEET_TORRES   = 'Torres';
@@ -78,11 +85,11 @@ const DEST = {
 };
 const DESTINOS_INICIALES = [
   ['Aeropuerto SCL',      'Aeropuerto Internacional Arturo Merino Benítez, Pudahuel, Chile', 'avión', true],
-  ['Isla Negra',          'Casa Museo Isla Negra, El Quisco, Chile',                         'auto',  true],
-  ['Valparaíso',          'Plaza Sotomayor, Valparaíso, Chile',                              'auto',  true],
-  ['Viña del Mar',        'Reloj de Flores, Viña del Mar, Chile',                            'auto',  true],
-  ['Valle de Casablanca', 'Casablanca, Valparaíso, Chile',                                   'auto',  true],
-  ['Santiago centro',     'Plaza de Armas, Santiago, Chile',                                 'auto',  true]
+  ['Isla Negra',          'Casa Museo Isla Negra, El Quisco, Chile',                         'libro',    true],
+  ['Valparaíso',          'Plaza Sotomayor, Valparaíso, Chile',                              'barco',    true],
+  ['Viña del Mar',        'Reloj de Flores, Viña del Mar, Chile',                            'casino',   true],
+  ['Valle de Casablanca', 'Casablanca, Valparaíso, Chile',                                   'vino',     true],
+  ['Santiago centro',     'Plaza de Armas, Santiago, Chile',                                 'edificio', true]
 ];
 
 /* ======================================================================
@@ -93,6 +100,15 @@ function doGet(e) {
   const p = (e && e.parameter) || {};
   const torre = String(p.torre || '').trim().toUpperCase();
   if (p.ping) logPing_(torre);
+  return ContentService.createTextOutput(respuesta_(torre)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/** JSON de una torre, reutilizado CACHE_S segundos (11 pantallas × cada minuto no relee la Sheet). */
+function respuesta_(torre) {
+  const cache = CacheService.getScriptCache();
+  const key = 'out_' + (torre || '_');
+  const hit = cache.get(key);
+  if (hit) return hit;
 
   const out = torre ? getPlaylist_(torre) : { items: [], urgente: false };
   const ctl = getControl_();
@@ -107,8 +123,19 @@ function doGet(e) {
   out.seguridad   = ctl.seguridad;
   out.qrTurismo   = ctl.qrTurismo;
   out.qrComercio  = ctl.qrComercio;
+  out.noche       = ctl.noche;
 
-  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+  const json = JSON.stringify(out);
+  if (json.length < 90000) cache.put(key, json, CACHE_S);
+  return json;
+}
+
+/** Borra la respuesta guardada de todas las torres (se llama al editar la Sheet o llegar un Form). */
+function limpiarCache_() {
+  const keys = { 'out__': 1 };
+  for (let i = 1; i <= 40; i++) keys['out_T' + i] = 1;
+  try { getListaTorres_().forEach(t => { keys['out_' + t.codigo] = 1; }); } catch (e) {}
+  CacheService.getScriptCache().removeAll(Object.keys(keys));
 }
 
 /* ---------------- Piezas del Form ---------------- */
@@ -197,7 +224,6 @@ function agregarACinta_(texto, torres, hasta) {
 function getDestinos_() {
   const sh = SpreadsheetApp.getActive().getSheetByName(SHEET_DESTINOS);
   if (!sh || sh.getLastRow() < 2) return [];
-  calcularKm_(sh, 3);   // calcula hasta 3 distancias faltantes por consulta
   const ix = destIdx_(sh);
   const g = (r, c) => (c > 0 ? r[c - 1] : '');
   const rows = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
@@ -233,6 +259,7 @@ function calcularKm_(sh, limite) {
   for (let i = 0; i < rows.length && hechas < (limite || 99); i++) {
     const dir = String(rows[i][ix.dir - 1] || '').trim();
     if (!dir || Number(rows[i][ix.km - 1]) > 0) continue;
+    if (ix.activo && isNo_(rows[i][ix.activo - 1])) continue;   // inactivos: no gasta cuota de Maps
     const km = kmPorRuta_(dir);
     if (km) { sh.getRange(i + 2, ix.km).setValue(km); hechas++; }
   }
@@ -285,21 +312,55 @@ function celdaControl_(sh, clave) {
   return null;
 }
 
+/** Igual que valorControl_, pero con el texto tal como se ve (para horas: evita el desfase de las fechas 1899). */
+function textoControl_(sh, clave) {
+  const d = sh.getDataRange().getDisplayValues();
+  for (const r of d) for (let c = 0; c < r.length; c++) {
+    if (norm_(r[c]).indexOf(clave) > -1) return String(r[c + 1] || '').trim();
+  }
+  return '';
+}
+
+/** "7:00", "07:00" o "07:00:00" → "07:00". Otro texto → ''. */
+function hora_(t) {
+  const m = String(t || '').match(/^(\d{1,2})[:.](\d{2})/);
+  if (!m || +m[1] > 24 || +m[2] > 59) return '';
+  return ('0' + (+m[1] % 24)).slice(-2) + ':' + m[2];
+}
+
 function getControl_() {
   const sh = SpreadsheetApp.getActive().getSheetByName(SHEET_CONTROL);
   const recarga = PropertiesService.getScriptProperties().getProperty('recarga') || '1';
-  if (!sh) return { recarga: recarga, seguridad: '', qrTurismo: '', qrComercio: '' };
+  if (!sh) return { recarga: recarga, seguridad: '', qrTurismo: '', qrComercio: '', noche: null };
+  const desde = hora_(textoControl_(sh, 'negra desde')), hasta = hora_(textoControl_(sh, 'negra hasta'));
   return {
     recarga:    recarga,
     seguridad:  valorControl_(sh, 'telefono'),
     qrTurismo:  valorControl_(sh, 'qr turismo'),
-    qrComercio: valorControl_(sh, 'qr comercio')
+    qrComercio: valorControl_(sh, 'qr comercio'),
+    noche:      desde && hasta && desde !== hasta ? { desde: desde, hasta: hasta } : null
   };
+}
+
+/** Correo para alertas (Control → "Correo para alertas"); si está vacío, CORREO_DEFECTO. */
+function correoAlertas_() {
+  const sh = SpreadsheetApp.getActive().getSheetByName(SHEET_CONTROL);
+  const v = sh ? valorControl_(sh, 'correo') : '';
+  return /@/.test(v) ? v : CORREO_DEFECTO;
+}
+
+function alertar_(asunto, cuerpo) {
+  try {
+    MailApp.sendEmail(correoAlertas_(), '[Pantallas] ' + asunto, cuerpo);
+  } catch (e) {
+    console.error('No se pudo enviar la alerta: ' + e);
+  }
 }
 
 /** Recarga todas las pantallas en menos de 1 minuto. */
 function recargarPantallas() {
   PropertiesService.getScriptProperties().setProperty('recarga', String(Date.now()));
+  limpiarCache_();
   const ss = SpreadsheetApp.getActive();
   const sh = ss.getSheetByName(SHEET_CONTROL);
   const cb = sh ? celdaControl_(sh, 'recargar') : null;
@@ -331,6 +392,19 @@ function getListaTorres_() {
  * ==================================================================== */
 
 function onFormSubmit(e) {
+  try {
+    procesarForm_(e);
+  } catch (err) {
+    alertar_('Error al procesar un aviso del Form',
+      'El aviso de la fila ' + (e && e.range ? e.range.getRow() : '?') + ' no se pudo procesar:\n\n' + err +
+      '\n\nRevisa la hoja "' + SHEET_CONTENT + '".');
+    throw err;
+  } finally {
+    limpiarCache_();
+  }
+}
+
+function procesarForm_(e) {
   const sh = e.range.getSheet();
   const row = e.range.getRow();
   const nv = e.namedValues || {};
@@ -347,11 +421,22 @@ function onFormSubmit(e) {
 
   // 2) Pieza con archivo
   if (id) {
-    const file = DriveApp.getFileById(id);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    const tipo = file.getMimeType().indexOf('video') === 0 ? 'video' : 'imagen';
-    setCol(C.url, directUrl_(id, tipo));
-    setCol(C.tipo, tipo);
+    try {
+      const file = DriveApp.getFileById(id);
+      const mime = String(file.getMimeType() || '');
+      const tipo = mime.indexOf('video') === 0 ? 'video' : mime.indexOf('image') === 0 ? 'imagen' : '';
+      if (!tipo) throw new Error('el archivo es de tipo "' + mime + '"; solo sirven imágenes (JPG, PNG) o videos (MP4)');
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      setCol(C.url, directUrl_(id, tipo));
+      setCol(C.tipo, tipo);
+    } catch (err) {
+      const msg = String(err && err.message || err);
+      setCol(C.tipo, 'ERROR: ' + msg);
+      alertar_('El aviso "' + (titulo || 'sin título') + '" no salió en pantalla',
+        'No se pudo usar el archivo del aviso "' + (titulo || 'sin título') + '":\n\n' + msg +
+        '\n\nFila ' + row + ' de la hoja "' + SHEET_CONTENT + '". Sube de nuevo el archivo en el Form ' +
+        '(imagen JPG/PNG de 1920×875 px o video MP4).');
+    }
     return;
   }
 
@@ -372,6 +457,7 @@ function onFormSubmit(e) {
 
 function alEditar(e) {
   if (!e || !e.range) return;
+  limpiarCache_();   // cualquier cambio en la Sheet se ve en las pantallas al minuto siguiente
   const sh = e.range.getSheet();
   const name = sh.getName();
   const r0 = e.range.getRow(), c0 = e.range.getColumn();
@@ -415,6 +501,7 @@ function alEditar(e) {
       const desde = Math.max(r0, 2);
       sh.getRange(desde, ix.km, r1 - desde + 1, 1).clearContent();
       calcularKm_(sh, 10);
+      limpiarCache_();
     }
   }
 }
@@ -425,6 +512,10 @@ function alEditar(e) {
 
 function logPing_(torre) {
   if (!torre) return;
+  const cache = CacheService.getScriptCache();
+  if (cache.get('ping_' + torre)) return;                                  // ya anotada hace poco
+  if (!getListaTorres_().some(t => t.codigo === torre)) return;            // torres inventadas ("1", "XXX"…)
+  cache.put('ping_' + torre, '1', PING_CADA_S);
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) return;
   try {
@@ -533,6 +624,7 @@ function onOpen() {
 function menuKm() {
   const sh = SpreadsheetApp.getActive().getSheetByName(SHEET_DESTINOS);
   const n = calcularKm_(sh, 99);
+  limpiarCache_();
   SpreadsheetApp.getActive().toast(n + ' distancia(s) calculadas.' +
     (ULTIMO_ERROR_KM ? ' Problema: ' + ULTIMO_ERROR_KM + '. Puedes escribir los km a mano en la columna E.' : ''),
     'Pantallas', 15);
@@ -551,7 +643,7 @@ function setup() {
   ['Panico', 'Bitacora'].forEach(n => { const s = ss.getSheetByName(n); if (s) ss.deleteSheet(s); });
   const resp = ss.getSheetByName(SHEET_CONTENT);
   if (resp) {
-    ['Título PT', 'Texto PT', 'Título EN', 'Texto EN'].forEach(nombre => {
+    ['Título PT', 'Texto PT', 'Título EN', 'Texto EN', 'Idiomas'].forEach(nombre => {
       const h = resp.getRange(1, 1, 1, resp.getLastColumn()).getValues()[0];
       const i = colOf_(h, nombre);
       if (i > -1) resp.deleteColumn(i + 1);
@@ -574,6 +666,7 @@ function setup() {
   prepararControl_();
   prepararRespuestas_();
   calcularKm_(null, 20);
+  limpiarCache_();
 
   const ok = !!ss.getSheetByName(SHEET_CONTENT);
   ss.toast(ok
@@ -670,12 +763,16 @@ function prepararControl_() {
     ['recargar',    '🔄 Recargar todas las pantallas (marca la casilla)'],
     ['telefono',    'Teléfono Seguridad Municipal (opcional)'],
     ['qr turismo',  'Link QR turismo (lista de Google Maps)'],
-    ['qr comercio', 'Link QR comercio local']
+    ['qr comercio', 'Link QR comercio local'],
+    ['correo',      'Correo para alertas', CORREO_DEFECTO],
+    ['negra desde', 'Pantalla negra desde (hh:mm, vacío = nunca)', '00:00'],
+    ['negra hasta', 'Pantalla negra hasta (hh:mm)', '07:00']
   ];
-  filas.forEach(([clave, etiqueta]) => {
+  filas.forEach(([clave, etiqueta, valor]) => {
     if (!celdaControl_(sh, clave)) {
       const r = sh.getLastRow() + 1;
       sh.getRange(r, 1).setValue(etiqueta).setFontWeight('bold');
+      if (valor) sh.getRange(r, 2).setNumberFormat('@').setValue(valor);
     }
   });
   const cb = celdaControl_(sh, 'recargar');

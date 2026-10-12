@@ -3,8 +3,10 @@ plugins {
 }
 
 // Valores que entrega GitHub Actions (secretos y variables del repo).
-def runNumber = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+// VERSION_CODE = cantidad de commits del repo (siempre crece; ver .github/workflows/apk.yml).
+def versionNum = (System.getenv('VERSION_CODE') ?: System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
 def playerUrl = System.getenv('PLAYER_URL') ?: 'https://mavillal.github.io/pantallas/'
+def apiUrl = System.getenv('API_URL') ?: 'https://script.google.com/macros/s/AKfycbxbUWcwKkebleaZLdKZlF-WZJl-lDQyQAGBToPl9vIWZ8BXRY4I9jN9dNuypl0V_lu-/exec'
 def keystorePath = System.getenv('KEYSTORE_PATH')
 def keystorePass = System.getenv('KEYSTORE_PASS')
 
@@ -16,10 +18,11 @@ android {
         applicationId 'cl.sadm.pantallas'
         minSdk 24
         targetSdk 34
-        versionCode runNumber
-        versionName "1.0.${runNumber}"
+        versionCode versionNum
+        versionName "1.0.${versionNum}"
         buildConfigField 'String', 'PLAYER_URL', "\"${playerUrl}\""
-        buildConfigField 'int', 'NUM_TORRES', '11'
+        buildConfigField 'String', 'API_URL', "\"${apiUrl}\""
+        buildConfigField 'int', 'NUM_TORRES', '11'   // solo si no hay internet al configurar
     }
 
     buildFeatures {

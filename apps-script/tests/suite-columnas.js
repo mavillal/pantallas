@@ -26,6 +26,7 @@ class Range {
   offset(dr,dc){ return new Range(this.sh,this.r+dr,this.c+dc,this.nr,this.nc); }
   getValues(){ const o=[]; for(let i=0;i<this.nr;i++){const row=[];for(let j=0;j<this.nc;j++) row.push(this.sh.get(this.r+i,this.c+j)); o.push(row);} return o; }
   getValue(){ return this.sh.get(this.r,this.c); }
+  getDisplayValues(){ return this.getValues().map(r=>r.map(v=>v===null||v===undefined?'':String(v))); }
   setValues(v){ v.forEach((row,i)=>row.forEach((x,j)=>this.sh.set(this.r+i,this.c+j,x))); return this; }
   setValue(x){ for(let i=0;i<this.nr;i++)for(let j=0;j<this.nc;j++) this.sh.set(this.r+i,this.c+j,x); return this; }
   clearContent(){ return this.setValue(''); }
@@ -42,6 +43,11 @@ global.PropertiesService = { getScriptProperties:()=>({getProperty:k=>props[k]||
 global.ScriptApp = { getProjectTriggers:()=>[], deleteTrigger(){}, newTrigger:()=>({forSpreadsheet(){return this},onFormSubmit(){return this},onEdit(){return this},create(){}}) };
 global.Utilities = { formatDate:(d,tz,f)=>{ const x=new Date(d.getTime()-3*3600e3); const p=n=>String(n).padStart(2,'0'); return f==='HH:mm'?p(x.getUTCHours())+':'+p(x.getUTCMinutes()):'x'; } };
 global.Maps = { DirectionFinder:{Mode:{DRIVING:'d'}}, newDirectionFinder:()=>{ let dest=''; const o={setOrigin(){return o},setDestination(d){dest=d;return o},setMode(){return o},getDirections(){ return {status:'OK',routes:[{legs:[{distance:{value: dest.length*2000}}]}]}; }}; return o; } };
+// Caché: apagada por defecto (las pruebas editan la hoja directo); la sección de caché la enciende.
+const cacheMem = {}; let cacheOn = false;
+global.CacheService = { getScriptCache:()=>({ get:k=>cacheOn?(cacheMem[k]||null):null, put:(k,v)=>{ if(cacheOn) cacheMem[k]=v; }, removeAll:ks=>ks.forEach(k=>delete cacheMem[k]) }) };
+const mails = [];
+global.MailApp = { sendEmail:(to,subj,body)=>mails.push({to,subj,body}) };
 global.LockService = { getScriptLock:()=>({tryLock:()=>true,releaseLock(){}}) };
 global.DriveApp = { Access:{ANYONE_WITH_LINK:1}, Permission:{VIEW:1}, getFileById:id=>({setSharing(){}, getMimeType:()=> id.startsWith('vid')?'video/mp4':'image/png', getId:()=>id}) };
 global.ContentService = { MimeType:{JSON:1}, createTextOutput:t=>({setMimeType(){return t}}) };
@@ -85,7 +91,11 @@ check(j1.avisoDestinos==='', 'sin aviso de error cuando hay km');
 console.log('\nC) Si Google Maps falla');
 sheets['Destinos'].set(2,5,''); sheets['Destinos'].set(3,5,'');
 const realMaps = global.Maps.newDirectionFinder;
-global.Maps.newDirectionFinder = () => { throw new Error('Servicio invocado demasiadas veces en un día: route'); };
+let llamadasMaps = 0;
+global.Maps.newDirectionFinder = () => { llamadasMaps++; throw new Error('Servicio invocado demasiadas veces en un día: route'); };
+for (let i = 0; i < 5; i++) doGet({parameter:{torre:'T1'}});
+check(llamadasMaps === 0, 'las consultas de los TV ya no llaman a Google Maps (no gastan cuota)');
+menuKm();
 j1 = JSON.parse(doGet({parameter:{torre:'T1'}}));
 check(j1.destinos.length===0 && /demasiadas veces/.test(j1.avisoDestinos), 'la URL-API muestra el error real de Maps: "'+j1.avisoDestinos+'"');
 sheets['Destinos'].set(2,5,120);

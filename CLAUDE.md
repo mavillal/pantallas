@@ -35,7 +35,12 @@ GitHub Pages (index.html = player) ← App Android "Pantallas" (WebView) en TV S
 - Destinos muestran **km por ruta**, no tiempos.
 - Clima: solo español, con máx/mín (Open-Meteo, sin clave).
 - QR en piezas de Turismo (Control: "Link QR turismo") y Comercio local ("Link QR comercio"), o "Link para QR" por pieza.
-- Imágenes para pantalla: 1920×875 px (la franja inferior ocupa el resto).
+- Imágenes para pantalla: 1920×875 px (la franja inferior ocupa el resto). El player pide a Drive la versión reducida
+  (`=w1920-h875`) y rellena los afiches verticales con la misma imagen en miniatura (`=w40`) como fondo desenfocado.
+- **El APK se mantiene casi fijo.** Todo lo visual y funcional va en `index.html` (los TV lo toman solos) o en la Sheet.
+  Tocar `android/` solo si cambia el arranque, el menú del control o la URL del player: cada cambio exige ir a los 11 stick.
+- Contacto que se muestra (web, menú del APK, pantalla de error): mavillal@gmail.com. Alertas por correo: Control →
+  "Correo para alertas" (por defecto el mismo).
 
 ## Hojas de la Sheet (columnas por nombre, el orden da igual)
 
@@ -45,8 +50,25 @@ GitHub Pages (index.html = player) ← App Android "Pantallas" (WebView) en TV S
 - `Cinta`: Texto · Torres · Activo · Hasta (opcional).
 - `Destinos`: Nombre en pantalla · Dirección · Ícono · Activo · Km por ruta (se calcula solo con Maps; se puede escribir a mano).
 - `Control`: etiquetas en col A con valor a la derecha: "Recargar todas las pantallas" (casilla), "Teléfono Seguridad
-  Municipal", "Link QR turismo", "Link QR comercio local".
-- `Estado`: última conexión de cada torre (lo escribe el backend). `Fix`: notas de Mario, no tocar.
+  Municipal", "Link QR turismo", "Link QR comercio local", "Correo para alertas", "Pantalla negra desde (hh:mm…)" y
+  "Pantalla negra hasta (hh:mm)" (se leen con getDisplayValues; vacío = sin pantalla negra).
+- `Estado`: última conexión de cada torre (lo escribe el backend cada 2 min, solo torres de la hoja Torres).
+  `Fix`: notas de Mario, no tocar.
+
+## Backend: caché y cuotas
+
+- `respuesta_(torre)` guarda el JSON 60 s en CacheService; `limpiarCache_()` se llama en alEditar, onFormSubmit,
+  recargarPantallas, menuKm y setup. Ediciones por API (no por la UI) tardan ≤ 60 s en verse.
+- `doGet` NUNCA llama a Google Maps: los km se calculan al editar la dirección, en el menú o en setup (solo activos).
+- onFormSubmit: si el archivo no es imagen/video o Drive no deja compartirlo, la columna Tipo queda `ERROR: …`
+  y se manda correo (`alertar_`). Usa MailApp: tras agregar permisos nuevos hay que correr setup desde el menú
+  para autorizarlos.
+
+## APK: versiones
+
+- versionCode = `git rev-list --count HEAD` (workflow con fetch-depth 0); tag `v1.0.<n>`. Nunca baja aunque se
+  recree el workflow. Sin el secreto `KEYSTORE_B64` el workflow falla a propósito (otra firma obliga a desinstalar).
+- La pantalla Configurar lee la lista de torres del backend (`BuildConfig.API_URL`); sin internet usa T1…T11.
 
 ## Cómo publicar el backend (lo que más falló a mano)
 
@@ -82,8 +104,9 @@ correr `setup` (menú 📺 Pantallas → ⚙ Instalar / reparar, o `clasp run se
 
 ## Estado al 12-oct-2026
 
-- Backend **v4.2 publicado** (implementación @13, misma URL); `?torre=T1` responde `"version":"v4.2"`.
-- `index.html` v4.2 en GitHub Pages. Repo propio en esta carpeta, `gh` con login de mavillal.
-- APK v1.0.7 (menú con "Contacto: mavillal@gmail.com") compilado en Releases. Pendiente: instalarlo en el stick.
-- Form: Mario debe borrar la pregunta "Idiomas" (ya no se usa).
+- Backend **v4.3**: caché 60 s, km fuera de doGet, alertas por correo, pantalla negra, Estado filtrado.
+- `index.html`: contador del afiche, íconos de destino, fondo desenfocado, imágenes reducidas, pantalla negra.
+- APK: Bienvenida + contacto si el player no carga; torres desde la Sheet; versión = n.º de commits.
+- Pendiente de Mario: borrar la pregunta "Idiomas" del Form y luego correr ⚙ Instalar / reparar (borra las columnas
+  Idiomas/Título PT/Texto PT, agrega filas nuevas de Control y autoriza el envío de correos). Instalar el APK nuevo.
 - `secretos-github.txt` (firma del APK) NO va al repo; Mario lo tiene aparte.

@@ -15,6 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # historial completo: el número de versión = cantidad de commits
+
+      # versionCode siempre creciente aunque se renombre o recree este workflow (Android rechaza bajar de versión).
+      - name: Número de versión
+        run: echo "VERSION_CODE=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v5
         with:
@@ -29,12 +35,13 @@ jobs:
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
+          # Sin la firma real NO se publica: un APK con otra firma obliga a desinstalar en todos los stick.
           if [ -z "$KEYSTORE_B64" ]; then
-            echo "::warning::Falta el secreto KEYSTORE_B64: se firmará con clave de prueba y las actualizaciones exigirán desinstalar."
-          else
-            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/pantallas.jks"
-            echo "KEYSTORE_PATH=$RUNNER_TEMP/pantallas.jks" >> "$GITHUB_ENV"
+            echo "::error::Falta el secreto KEYSTORE_B64 (firma del APK). No se publica nada."
+            exit 1
           fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/pantallas.jks"
+          echo "KEYSTORE_PATH=$RUNNER_TEMP/pantallas.jks" >> "$GITHUB_ENV"
 
       - name: Compilar
         working-directory: android
@@ -49,7 +56,7 @@ jobs:
       - name: Publicar release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: Pantallas Player v1.0.${{ github.run_number }}
+          tag_name: v1.0.${{ env.VERSION_CODE }}
+          name: Pantallas Player v1.0.${{ env.VERSION_CODE }}
           files: pantallas-player.apk
           make_latest: true

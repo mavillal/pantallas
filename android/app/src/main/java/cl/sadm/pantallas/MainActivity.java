@@ -41,7 +41,7 @@ public class MainActivity extends Activity {
     static final String K_TORRE = "torre";
     private static final long RETRY_MS = 30_000;
     private static final long MENU_AUTOHIDE_MS = 20_000;
-    private static final String CONTACTO = "mavillal@gmail.com";
+    static final String CONTACTO = "mavillal@gmail.com";
 
     private static final int NAVY = Color.parseColor("#E60B2440");
     private static final int SAND = Color.parseColor("#F6F3EC");
@@ -181,8 +181,8 @@ public class MainActivity extends Activity {
     private void showError(String why) {
         showingError = true;
         overlayTitle.setText("No se pudo cargar el player");
-        overlayMsg.setText(why + "\n\nDirección: " + playerUrl(prefs())
-                + "\nReintento automático cada 30 segundos.");
+        overlayMsg.setText(why + "\n\nReintento automático cada 30 segundos."
+                + "\nContacto: " + CONTACTO);
         btnSeguir.setText("Ocultar");
         handler.removeCallbacks(hideMenuTask);
         showOverlay();
@@ -235,7 +235,7 @@ public class MainActivity extends Activity {
             if (request.isForMainFrame()) {
                 int code = response.getStatusCode();
                 failed(code == 404
-                        ? "Error 404: la página no existe. Revisa la dirección o que GitHub Pages esté activo."
+                        ? "Error 404: la página del player no responde."
                         : "El servidor respondió con error " + code + ".");
             }
         }

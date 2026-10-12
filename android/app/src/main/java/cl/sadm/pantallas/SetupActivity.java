@@ -13,7 +13,6 @@ import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -21,9 +20,9 @@ import android.widget.TextView;
 
 /**
  * Configuración de un stick (una sola vez):
- *  1. URL del player (viene precargada).
+ *  1. Permiso de inicio automático ("Mostrar sobre otras apps"), necesario en Android 10+.
  *  2. Torre de este TV.
- *  3. Permiso de inicio automático ("Mostrar sobre otras apps"), necesario en Android 10+.
+ * La URL del player viene fija en el APK (PLAYER_URL) y no se muestra en pantalla.
  */
 public class SetupActivity extends Activity {
 
@@ -33,7 +32,6 @@ public class SetupActivity extends Activity {
     private static final int OK = Color.parseColor("#7FD6A0");
     private static final int WARN = Color.parseColor("#F2B48F");
 
-    private EditText urlInput;
     private TextView permStatus;
     private Button permButton;
 
@@ -50,22 +48,10 @@ public class SetupActivity extends Activity {
 
         root.addView(text("Configurar pantalla", 30, FG, true));
         root.addView(text("Versión " + BuildConfig.VERSION_NAME
-                + (torreActual.isEmpty() ? "" : "  ·  Torre actual: " + torreActual), 16, MUTED, false));
+                + (torreActual.isEmpty() ? "" : "  ·  Torre actual: " + torreActual)
+                + "  ·  Contacto: " + MainActivity.CONTACTO, 16, MUTED, false));
 
-        root.addView(text("1. Dirección del player", 20, FG, true), spaced());
-        urlInput = new EditText(this);
-        urlInput.setSingleLine(true);
-        urlInput.setTextColor(FG);
-        urlInput.setTextSize(18);
-        urlInput.setText(MainActivity.playerUrl(p));
-        root.addView(urlInput);
-        Button defaultUrl = new Button(this);
-        defaultUrl.setText("Usar dirección predeterminada");
-        defaultUrl.setAllCaps(false);
-        defaultUrl.setOnClickListener(v -> urlInput.setText(BuildConfig.PLAYER_URL));
-        root.addView(defaultUrl);
-
-        root.addView(text("2. Inicio automático al encender", 20, FG, true), spaced());
+        root.addView(text("1. Inicio automático al encender", 20, FG, true), spaced());
         permStatus = text("", 16, MUTED, false);
         root.addView(permStatus);
         permButton = new Button(this);
@@ -73,7 +59,7 @@ public class SetupActivity extends Activity {
         permButton.setOnClickListener(v -> requestOverlayPermission());
         root.addView(permButton);
 
-        root.addView(text("3. ¿Qué torre es este TV?  (elige para terminar)", 20, FG, true), spaced());
+        root.addView(text("2. ¿Qué torre es este TV?  (elige para terminar)", 20, FG, true), spaced());
         GridLayout grid = new GridLayout(this);
         grid.setColumnCount(6);
         for (int i = 1; i <= BuildConfig.NUM_TORRES; i++) {
@@ -133,11 +119,7 @@ public class SetupActivity extends Activity {
     }
 
     private void save(String torre) {
-        String url = urlInput.getText().toString().trim();
-        if (url.isEmpty() || url.contains("USUARIO")) url = BuildConfig.PLAYER_URL;
-        if (!url.startsWith("http")) url = "https://" + url;
         getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).edit()
-                .putString(MainActivity.K_URL, url)
                 .putString(MainActivity.K_TORRE, torre)
                 .apply();
         Intent i = new Intent(this, MainActivity.class);

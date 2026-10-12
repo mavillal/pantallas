@@ -456,9 +456,18 @@ function showPicker(){
     .then(function(r){ return r.json(); })
     .then(function(d){
       if (d.listaTorres && d.listaTorres.length) { setTowers(d.listaTorres); renderPicker(d.listaTorres); }
-      $('pickFoot').textContent = 'Sistema ' + (d.version || '') + ' · ' + towers().length + ' pantallas';
+      SIS = 'Sistema ' + (d.version || '') + ' · ' + towers().length + ' pantallas';
+      pickFoot();
     })
-    .catch(function(){ $('pickFoot').textContent = 'Sin conexión con el contenido: se muestran las torres guardadas.'; });
+    .catch(function(){ SIS = 'Sin conexión con el contenido: se muestran las torres guardadas.'; pickFoot(); });
+  fetch('https://api.github.com/repos/mavillal/pantallas/releases/latest')
+    .then(function(r){ return r.json(); })
+    .then(function(r){ if (r.tag_name) { APK = 'App TV ' + r.tag_name; pickFoot(); } })
+    .catch(function(){});
+}
+var SIS = '', APK = '';
+function pickFoot(){
+  $('pickFoot').textContent = [SIS, APK, 'Contacto: mavillal@gmail.com'].filter(Boolean).join(' · ');
 }
 
 /* ---------- navegación anterior / siguiente ---------- */
